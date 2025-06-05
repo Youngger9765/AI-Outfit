@@ -1,7 +1,8 @@
-import OpenAI, { toFile } from "openai";
-import fs from "fs";
+/* eslint-disable @typescript-eslint/no-require-imports */
+const OpenAI = require("openai").default;
+const toFile = require("openai").toFile;
+const fs = require("fs");
 const formidable = require("formidable");
-
 
 export const config = {
   api: { bodyParser: false },
@@ -31,7 +32,6 @@ export default async function handler(req, res) {
     }
     const imagesArr = Array.isArray(files.images) ? files.images : [files.images];
 
-    // 轉成 OpenAI SDK 支援的格式
     const images = await Promise.all(
       imagesArr.map(async (img) =>
         await toFile(fs.createReadStream(img.filepath), img.originalFilename, {
@@ -51,4 +51,4 @@ export default async function handler(req, res) {
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
-} 
+}
