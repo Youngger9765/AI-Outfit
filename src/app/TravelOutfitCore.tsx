@@ -311,9 +311,7 @@ const TravelOutfitCore = () => {
         };
         requestAnimationFrame(animate);
       });
-    } catch (error) {
-      console.log('延遲完成');
-    }
+    } catch {}
     
     // 生成圖片內容
     const colors = {
