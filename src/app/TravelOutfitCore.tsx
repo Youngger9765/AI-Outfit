@@ -15,15 +15,52 @@ import {
   X
 } from 'lucide-react';
 
+type Destination = {
+  id: number;
+  name: string;
+  country: string;
+  style: string;
+  weather: string;
+  image: string;
+  color: string;
+  tags: string[];
+  aliases: string[];
+};
+
+type UploadedCloth = {
+  id: number;
+  file: File;
+  preview: string | ArrayBuffer | null;
+  name: string;
+};
+
+interface SelfieImage {
+  file: File;
+  preview: string | ArrayBuffer | null;
+}
+
+interface GeneratedContent {
+  type: string;
+  url: string;
+  description: string;
+  coachMessage: string;
+  outfitDetails: {
+    climate: string;
+    style: string;
+    clothesUsed: number;
+    recommendation: string;
+  };
+}
+
 const TravelOutfitCore = () => {
   const [step, setStep] = useState(1);
-  const [uploadedClothes, setUploadedClothes] = useState([]);
-  const [selfieImage, setSelfieImage] = useState(null);
-  const [selectedDestination, setSelectedDestination] = useState(null);
-  const [generatedContent, setGeneratedContent] = useState(null);
+  const [uploadedClothes, setUploadedClothes] = useState<UploadedCloth[]>([]);
+  const [selfieImage, setSelfieImage] = useState<SelfieImage | null>(null);
+  const [selectedDestination, setSelectedDestination] = useState<Destination | null>(null);
+  const [generatedContent, setGeneratedContent] = useState<GeneratedContent | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filteredDestinations, setFilteredDestinations] = useState([]);
+  const [filteredDestinations, setFilteredDestinations] = useState<Destination[]>([]);
   const [isComposing, setIsComposing] = useState(false);
   
   const handleSearch = (query: string) => {
@@ -76,11 +113,11 @@ const TravelOutfitCore = () => {
     return filteredDestinations;
   };
 
-  const clothesInputRef = useRef(null);
-  const selfieInputRef = useRef(null);
+  const clothesInputRef = useRef<HTMLInputElement>(null);
+  const selfieInputRef = useRef<HTMLInputElement>(null);
 
   // 擴展的旅遊目的地資料庫
-  const allDestinations = [
+  const allDestinations: Destination[] = [
     // 熱門城市
     { 
       id: 1, 
@@ -263,32 +300,37 @@ const TravelOutfitCore = () => {
   ];
 
   const handleClothesUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files) return;
     const files = Array.from(event.target.files);
     files.forEach(file => {
       const reader = new FileReader();
       reader.onload = (e) => {
-        setUploadedClothes(prev => [...prev, {
-          id: Date.now() + Math.random(),
-          file: file,
-          preview: e.target.result,
-          name: file.name
-        }]);
+        setUploadedClothes(prev => [
+          ...prev,
+          {
+            id: Date.now() + Math.random(),
+            file: file,
+            preview: e.target ? e.target.result : null,
+            name: file.name
+          }
+        ]);
       };
-      reader.readAsDataURL(file);
+      reader.readAsDataURL(typeof file === 'string' ? file : file);
     });
   };
 
   const handleSelfieUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files) return;
     const file = event.target.files[0];
     if (file) {
       const reader = new FileReader();
       reader.onload = (e) => {
         setSelfieImage({
           file: file,
-          preview: e.target.result
+          preview: e.target ? e.target.result : null
         });
       };
-      reader.readAsDataURL(file);
+      reader.readAsDataURL(typeof file === 'string' ? file : file);
     }
   };
 
@@ -298,7 +340,7 @@ const TravelOutfitCore = () => {
     // 直接生成，不使用 setTimeout 避免問題
     // 使用 Promise 來模擬延遲，但確保一定會執行
     try {
-      await new Promise(resolve => {
+      await new Promise<void>(resolve => {
         // 使用 requestAnimationFrame 代替 setTimeout
         let count = 0;
         const animate = () => {
@@ -314,7 +356,7 @@ const TravelOutfitCore = () => {
     } catch {}
     
     // 生成圖片內容
-    const colors = {
+    const colors: Record<number, { primary: string; secondary: string; accent: string }> = {
       1: { primary: '#E8B4F0', secondary: '#C8A8E9', accent: '#F4A6CD' }, // 巴黎
       2: { primary: '#A8D8EA', secondary: '#AA96DA', accent: '#FCBAD3' }, // 首爾
       3: { primary: '#FFB3BA', secondary: '#FFDFBA', accent: '#FFFFBA' }, // 東京
@@ -377,7 +419,7 @@ const TravelOutfitCore = () => {
     setIsGenerating(false);
   };
 
-  const StepIndicator = ({ currentStep, totalSteps }) => (
+  const StepIndicator = ({ currentStep, totalSteps }: { currentStep: number; totalSteps: number }) => (
     <div className="flex items-center justify-center mb-8">
       {Array.from({ length: totalSteps }, (_, i) => (
         <div key={i} className="flex items-center">
@@ -407,7 +449,7 @@ const TravelOutfitCore = () => {
 
       <div 
         className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-purple-400 transition-colors cursor-pointer"
-        onClick={() => clothesInputRef.current?.click()}
+        onClick={() => { if (clothesInputRef.current) clothesInputRef.current.click(); }}
       >
         <Camera className="mx-auto mb-4 text-gray-400" size={48} />
         <h3 className="text-lg font-medium text-gray-700 mb-2">點擊上傳衣服照片</h3>
@@ -429,7 +471,7 @@ const TravelOutfitCore = () => {
             {uploadedClothes.map(item => (
               <div key={item.id} className="relative">
                 <img 
-                  src={item.preview} 
+                  src={item.preview as string} 
                   alt={item.name}
                   className="w-full h-32 object-cover rounded-lg shadow-md"
                 />
@@ -465,12 +507,12 @@ const TravelOutfitCore = () => {
 
       <div 
         className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-purple-400 transition-colors cursor-pointer"
-        onClick={() => selfieInputRef.current?.click()}
+        onClick={() => { if (selfieInputRef.current) selfieInputRef.current.click(); }}
       >
         {selfieImage ? (
           <div className="relative">
             <img 
-              src={selfieImage.preview} 
+              src={selfieImage.preview as string} 
               alt="自拍照預覽"
               className="mx-auto w-48 h-64 object-cover rounded-lg shadow-lg"
             />
@@ -709,7 +751,7 @@ const TravelOutfitCore = () => {
                   <MapPin className="text-blue-600" size={24} />
                 </div>
                 <p className="text-sm text-gray-600">
-                  {selectedDestination.name}
+                  {selectedDestination && selectedDestination.name}
                 </p>
               </div>
             </div>
@@ -717,7 +759,7 @@ const TravelOutfitCore = () => {
             <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-4">
               <h3 className="font-bold text-gray-800 mb-2">即將為你生成：</h3>
               <p className="text-gray-600">
-                適合在{selectedDestination.name}穿著的{selectedDestination.style}風格旅遊照片
+                適合在{selectedDestination && selectedDestination.name}穿著的{selectedDestination && selectedDestination.style}風格旅遊照片
               </p>
             </div>
           </div>
@@ -752,7 +794,7 @@ const TravelOutfitCore = () => {
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
-                <span className="text-sm text-gray-600">🔄 匹配 {selectedDestination?.name || '目的地'} 風格</span>
+                <span className="text-sm text-gray-600">🔄 匹配 {selectedDestination && selectedDestination.name} 風格</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
