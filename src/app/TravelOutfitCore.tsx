@@ -26,7 +26,7 @@ const TravelOutfitCore = () => {
   const [filteredDestinations, setFilteredDestinations] = useState([]);
   const [isComposing, setIsComposing] = useState(false);
   
-  const handleSearch = (query) => {
+  const handleSearch = (query: string) => {
     if (isComposing) return; // 如果正在輸入注音，不執行搜尋
     
     setSearchQuery(query);
@@ -47,12 +47,12 @@ const TravelOutfitCore = () => {
     setFilteredDestinations(filtered);
   };
 
-  const handleSearchSubmit = (e) => {
+  const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     handleSearch(searchQuery);
   };
 
-  const handleInputChange = (e) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSearchQuery(value);
     
@@ -262,7 +262,7 @@ const TravelOutfitCore = () => {
     }
   ];
 
-  const handleClothesUpload = (event) => {
+  const handleClothesUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files);
     files.forEach(file => {
       const reader = new FileReader();
@@ -278,7 +278,7 @@ const TravelOutfitCore = () => {
     });
   };
 
-  const handleSelfieUpload = (event) => {
+  const handleSelfieUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files[0];
     if (file) {
       const reader = new FileReader();
