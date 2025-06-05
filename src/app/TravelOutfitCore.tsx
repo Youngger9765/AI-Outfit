@@ -336,86 +336,62 @@ const TravelOutfitCore = () => {
 
   const generateTravelContent = async () => {
     setIsGenerating(true);
-    
-    // 直接生成，不使用 setTimeout 避免問題
-    // 使用 Promise 來模擬延遲，但確保一定會執行
+
+    // 組合 prompt，強調真實風格
+    const clothesList = uploadedClothes.map(c => c.name).join('、') || '時尚服飾';
+    const destName = selectedDestination?.name || '旅行地點';
+    const destStyle = selectedDestination?.style || '時尚';
+    const destWeather = selectedDestination?.weather || '舒適天氣';
+    const prompt = `一位年輕人，穿著${clothesList}，在${destName}，${destWeather}，${destStyle}風格，photorealistic, realistic photo, fashion street style, high resolution`;
+
+    let imageUrl = '';
     try {
-      await new Promise<void>(resolve => {
-        // 使用 requestAnimationFrame 代替 setTimeout
-        let count = 0;
-        const animate = () => {
-          count++;
-          if (count >= 120) { // 約2秒 (60fps * 2)
-            resolve();
-          } else {
-            requestAnimationFrame(animate);
-          }
-        };
-        requestAnimationFrame(animate);
+      const formData = new FormData();
+      formData.append('prompt', prompt);
+      uploadedClothes.forEach((cloth, idx) => {
+        formData.append('images', cloth.file, `cloth${idx}.jpg`);
       });
-    } catch {}
-    
-    // 生成圖片內容
-    const colors: Record<number, { primary: string; secondary: string; accent: string }> = {
-      1: { primary: '#E8B4F0', secondary: '#C8A8E9', accent: '#F4A6CD' }, // 巴黎
-      2: { primary: '#A8D8EA', secondary: '#AA96DA', accent: '#FCBAD3' }, // 首爾
-      3: { primary: '#FFB3BA', secondary: '#FFDFBA', accent: '#FFFFBA' }, // 東京
-      4: { primary: '#BAE1FF', secondary: '#BAFFC9', accent: '#FFFFBA' }, // 倫敦
-      5: { primary: '#FFD93D', secondary: '#6BCF7F', accent: '#4D96FF' }, // 紐約
-      6: { primary: '#6BCF7F', secondary: '#4D96FF', accent: '#FFD93D' }  // 峇里島
-    };
-    
-    const destColors = colors[selectedDestination?.id || 1];
-    
-    const mockImage = `data:image/svg+xml;base64,${btoa(`
-      <svg width="300" height="450" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style="stop-color:${destColors.primary};stop-opacity:1" />
-            <stop offset="100%" style="stop-color:${destColors.secondary};stop-opacity:1" />
-          </linearGradient>
-        </defs>
-        <rect width="300" height="450" fill="url(#bg)"/>
-        <text x="150" y="40" text-anchor="middle" fill="white" font-size="20">${selectedDestination?.image || '✈️'}</text>
-        <ellipse cx="150" cy="120" rx="35" ry="45" fill="#FDBCB4" opacity="0.9"/>
-        <rect x="115" y="160" width="70" height="80" rx="10" fill="white" opacity="0.9"/>
-        <rect x="125" y="240" width="50" height="100" rx="8" fill="#2C3E50" opacity="0.8"/>
-        <ellipse cx="135" cy="360" rx="15" ry="8" fill="#34495E"/>
-        <ellipse cx="165" cy="360" rx="15" ry="8" fill="#34495E"/>
-        <circle cx="180" cy="180" r="12" fill="${destColors.accent}" opacity="0.8"/>
-        <rect x="20" y="380" width="260" height="50" rx="25" fill="white" opacity="0.9"/>
-        <text x="150" y="400" text-anchor="middle" fill="#2C3E50" font-size="14" font-weight="bold">
-          ${selectedDestination?.name || '旅行'} ${selectedDestination?.style || '時尚'}
-        </text>
-        <text x="150" y="418" text-anchor="middle" fill="#7F8C8D" font-size="10">
-          完美適合 ${selectedDestination?.weather || '舒適'} 天氣
-        </text>
-      </svg>
-    `)}`;
+      if (selfieImage) {
+        formData.append('images', selfieImage.file, 'selfie.jpg');
+      }
+      const res = await fetch('/api/edit-image', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.imageBase64) {
+        imageUrl = `data:image/png;base64,${data.imageBase64}`;
+      } else {
+        imageUrl = '';
+        alert(data.error ? JSON.stringify(data.error) : 'AI 生成失敗');
+      }
+    } catch (e) {
+      imageUrl = '';
+      alert('AI 生成失敗: ' + String(e));
+    }
 
     const coachMessages = [
-      `太棒了！這套${selectedDestination?.style || '時尚'}穿搭完美展現了你的個人魅力✨`,
-      `在${selectedDestination?.name || '旅行目的地'}穿這套一定超亮眼！色彩搭配很有品味👏`,
-      `這個搭配充滿了${selectedDestination?.style || '獨特'}的精髓，你穿起來一定很棒🌟`,
-      `完美！這套穿搭既實用又時尚，很適合${selectedDestination?.weather || '當地'}的天氣💫`,
-      `你的穿搭品味真不錯！這套在${selectedDestination?.name || '目的地'}絕對是焦點🔥`
+      `太棒了！這套${destStyle}穿搭完美展現了你的個人魅力✨`,
+      `在${destName}穿這套一定超亮眼！色彩搭配很有品味👏`,
+      `這個搭配充滿了${destStyle}的精髓，你穿起來一定很棒🌟`,
+      `完美！這套穿搭既實用又時尚，很適合${destWeather}的天氣💫`,
+      `你的穿搭品味真不錯！這套在${destName}絕對是焦點🔥`
     ];
-
     const randomMessage = coachMessages[Math.floor(Math.random() * coachMessages.length)];
 
     setGeneratedContent({
       type: 'image',
-      url: mockImage,
-      description: `為你在${selectedDestination?.name || '旅行'}的旅行生成的${selectedDestination?.style || '時尚'}風格穿搭照片`,
+      url: imageUrl,
+      description: `為你在${destName}的旅行生成的${destStyle}風格穿搭照片`,
       coachMessage: randomMessage,
       outfitDetails: {
-        climate: selectedDestination?.weather || '舒適天氣',
-        style: selectedDestination?.style || '個人風格',
+        climate: destWeather,
+        style: destStyle,
         clothesUsed: uploadedClothes.length,
-        recommendation: `這套搭配運用了你上傳的${uploadedClothes.length}件衣物中的精選單品，結合${selectedDestination?.name || '目的地'}當地的${selectedDestination?.style || '時尚'}風格特色。`
+        recommendation: `這套搭配運用了你上傳的${uploadedClothes.length}件衣物中的精選單品，結合${destName}當地的${destStyle}風格特色。`
       }
     });
-    
+
     setIsGenerating(false);
   };
 
@@ -819,11 +795,9 @@ const TravelOutfitCore = () => {
           <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-4">你的專屬旅遊穿搭照片 ✨</h2>
           
           <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
-            <img 
-              src={generatedContent.url} 
-              alt="生成的旅遊穿搭照片"
-              className="mx-auto rounded-lg shadow-md mb-6 max-w-full h-auto"
-            />
+            {generatedContent?.url ? (
+              <img src={generatedContent.url} alt="AI生成穿搭" style={{ maxWidth: 400 }} />
+            ) : null}
             
             {/* AI 教練評語 */}
             <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-4 mb-4">
