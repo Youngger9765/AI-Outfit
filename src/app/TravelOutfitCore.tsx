@@ -342,8 +342,14 @@ const TravelOutfitCore = () => {
     const destName = selectedDestination?.name || '旅行地點';
     const destStyle = selectedDestination?.style || '時尚';
     const destWeather = selectedDestination?.weather || '舒適天氣';
-    const prompt = `一位年輕人，穿著${clothesList}，在${destName}，${destWeather}，${destStyle}風格，photorealistic, realistic photo, 請將人物跟背景分開，不要讓背景影響到人物的穿搭，人物要全身照比例，不可以切到頭跟腳，在畫面的 1/3 位置左右`;
-
+    const prompt = `
+    Combine the provided face and outfit onto a realistic human figure and place them naturally at the given location. 
+    Make sure the composition shows the full body (head to feet) clearly, centered in the frame, with natural proportions and lighting that matches the background. 
+    The final image should look like an authentic scene at this location.
+    ${clothesList ? `The outfit includes: ${clothesList}.` : ""}
+    Location: ${destName}, Style: ${destStyle}, Weather: ${destWeather}.
+    `;
+    
     let imageUrl = '';
     try {
       const formData = new FormData();
