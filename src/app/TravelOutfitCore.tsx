@@ -342,7 +342,7 @@ const TravelOutfitCore = () => {
     const destName = selectedDestination?.name || '旅行地點';
     const destStyle = selectedDestination?.style || '時尚';
     const destWeather = selectedDestination?.weather || '舒適天氣';
-    const prompt = `一位年輕人，穿著${clothesList}，在${destName}，${destWeather}，${destStyle}風格，photorealistic, realistic photo, fashion street style, high resolution`;
+    const prompt = `一位年輕人，穿著${clothesList}，在${destName}，${destWeather}，${destStyle}風格，photorealistic, realistic photo, 請將人物跟背景分開，不要讓背景影響到人物的穿搭，人物要全身比例，在畫面的 1/3 位置左右`;
 
     let imageUrl = '';
     try {
