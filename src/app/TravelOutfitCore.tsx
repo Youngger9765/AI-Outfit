@@ -15,18 +15,6 @@ import {
   X
 } from 'lucide-react';
 
-type Destination = {
-  id: number;
-  name: string;
-  country: string;
-  style: string;
-  weather: string;
-  image: string;
-  color: string;
-  tags: string[];
-  aliases: string[];
-};
-
 type UploadedCloth = {
   id: number;
   file: File;
@@ -56,248 +44,18 @@ const TravelOutfitCore = () => {
   const [step, setStep] = useState(1);
   const [uploadedClothes, setUploadedClothes] = useState<UploadedCloth[]>([]);
   const [selfieImage, setSelfieImage] = useState<SelfieImage | null>(null);
-  const [selectedDestination, setSelectedDestination] = useState<Destination | null>(null);
+  const [selectedDestination, setSelectedDestination] = useState<any | null>(null);
   const [generatedContent, setGeneratedContent] = useState<GeneratedContent | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filteredDestinations, setFilteredDestinations] = useState<Destination[]>([]);
-  const [isComposing, setIsComposing] = useState(false);
+  const [locationName, setLocationName] = useState('');
+  const [searching, setSearching] = useState(false);
+  const [locationInfo, setLocationInfo] = useState<any>(null);
+  const [selectedPhoto, setSelectedPhoto] = useState('');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   
-  const handleSearch = (query: string) => {
-    if (isComposing) return; // 如果正在輸入注音，不執行搜尋
-    
-    setSearchQuery(query);
-    if (query.trim() === '') {
-      setFilteredDestinations([]);
-      return;
-    }
-    
-    const searchTerm = query.toLowerCase();
-    const filtered = allDestinations.filter(dest => 
-      dest.name.toLowerCase().includes(searchTerm) ||
-      dest.country.toLowerCase().includes(searchTerm) ||
-      dest.style.toLowerCase().includes(searchTerm) ||
-      dest.tags.some(tag => tag.toLowerCase().includes(searchTerm)) ||
-      dest.aliases.some(alias => alias.toLowerCase().includes(searchTerm))
-    );
-    
-    setFilteredDestinations(filtered);
-  };
-
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    handleSearch(searchQuery);
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setSearchQuery(value);
-    
-    // 如果不是在輸入注音，就即時搜尋
-    if (!isComposing && value.trim() !== '') {
-      handleSearch(value);
-    } else if (value.trim() === '') {
-      setFilteredDestinations([]);
-    }
-  };
-
-  const clearSearch = () => {
-    setSearchQuery('');
-    setFilteredDestinations([]);
-  };
-
-  const getDisplayDestinations = () => {
-    if (searchQuery.trim() === '') {
-      return allDestinations.slice(0, 6); // 顯示前6個熱門目的地
-    }
-    return filteredDestinations;
-  };
-
   const clothesInputRef = useRef<HTMLInputElement>(null);
   const selfieInputRef = useRef<HTMLInputElement>(null);
-
-  // 擴展的旅遊目的地資料庫
-  const allDestinations: Destination[] = [
-    // 熱門城市
-    { 
-      id: 1, 
-      name: '巴黎', 
-      country: '法國', 
-      style: '典雅優雅', 
-      weather: '15°C', 
-      image: '🗼', 
-      color: 'from-pink-400 to-purple-500', 
-      tags: ['歐洲', '浪漫', '時尚', '藝術'],
-      aliases: ['paris', '法國巴黎', '花都', '浪漫之都', '時尚之都']
-    },
-    { 
-      id: 2, 
-      name: '首爾', 
-      country: '韓國', 
-      style: '韓系時尚', 
-      weather: '8°C', 
-      image: '🏢', 
-      color: 'from-blue-400 to-cyan-500', 
-      tags: ['亞洲', 'K-pop', '現代', '購物'],
-      aliases: ['seoul', '漢城', '韓國首爾', '南韓', '韓式', 'kpop', 'k-pop']
-    },
-    { 
-      id: 3, 
-      name: '東京', 
-      country: '日本', 
-      style: '日系簡約', 
-      weather: '12°C', 
-      image: '🏯', 
-      color: 'from-red-400 to-pink-500', 
-      tags: ['亞洲', '簡約', '動漫', '科技'],
-      aliases: ['tokyo', '日本東京', '櫻花', '和風', '日式', '動漫']
-    },
-    { 
-      id: 4, 
-      name: '倫敦', 
-      country: '英國', 
-      style: '英倫復古', 
-      weather: '10°C', 
-      image: '🏰', 
-      color: 'from-gray-400 to-blue-500', 
-      tags: ['歐洲', '復古', '紳士', '文藝'],
-      aliases: ['london', '英國倫敦', '英式', '紳士', '復古']
-    },
-    { 
-      id: 5, 
-      name: '紐約', 
-      country: '美國', 
-      style: '都市摩登', 
-      weather: '18°C', 
-      image: '🏙️', 
-      color: 'from-yellow-400 to-orange-500', 
-      tags: ['北美', '摩登', '商務', '潮流'],
-      aliases: ['new york', 'ny', 'nyc', '美國紐約', '大蘋果', '摩登']
-    },
-    { 
-      id: 6, 
-      name: '峇里島', 
-      country: '印尼', 
-      style: '度假休閒', 
-      weather: '28°C', 
-      image: '🏝️', 
-      color: 'from-green-400 to-teal-500', 
-      tags: ['東南亞', '度假', '海灘', '熱帶'],
-      aliases: ['bali', '巴厘島', '印尼峇里島', '海島', '度假']
-    },
-    
-    // 新增更多目的地
-    { 
-      id: 7, 
-      name: '米蘭', 
-      country: '義大利', 
-      style: '奢華時尚', 
-      weather: '16°C', 
-      image: '🏛️', 
-      color: 'from-purple-400 to-pink-500', 
-      tags: ['歐洲', '時尚', '奢華', '設計'],
-      aliases: ['milan', '義大利米蘭', '時尚之都', '奢華']
-    },
-    { 
-      id: 8, 
-      name: '洛杉磯', 
-      country: '美國', 
-      style: '加州休閒', 
-      weather: '22°C', 
-      image: '🌴', 
-      color: 'from-orange-400 to-yellow-500', 
-      tags: ['北美', '休閒', '陽光', '海灘'],
-      aliases: ['los angeles', 'la', '美國洛杉磯', '加州', '陽光', '好萊塢']
-    },
-    { 
-      id: 9, 
-      name: '上海', 
-      country: '中國', 
-      style: '摩登東方', 
-      weather: '14°C', 
-      image: '🌆', 
-      color: 'from-indigo-400 to-purple-500', 
-      tags: ['亞洲', '現代', '商務', '國際'],
-      aliases: ['shanghai', '中國上海', '魔都', '摩登', '東方']
-    },
-    { 
-      id: 10, 
-      name: '雪梨', 
-      country: '澳洲', 
-      style: '悠閒自然', 
-      weather: '20°C', 
-      image: '🦘', 
-      color: 'from-blue-400 to-green-500', 
-      tags: ['大洋洲', '自然', '悠閒', '海港'],
-      aliases: ['sydney', '澳洲雪梨', '悉尼', '澳洲', '海港']
-    },
-    { 
-      id: 11, 
-      name: '曼谷', 
-      country: '泰國', 
-      style: '熱帶風情', 
-      weather: '30°C', 
-      image: '🛕', 
-      color: 'from-yellow-400 to-red-500', 
-      tags: ['東南亞', '熱帶', '文化', '美食'],
-      aliases: ['bangkok', '泰國曼谷', '泰式', '熱帶', '佛教']
-    },
-    { 
-      id: 12, 
-      name: '柏林', 
-      country: '德國', 
-      style: '前衛藝術', 
-      weather: '9°C', 
-      image: '🎨', 
-      color: 'from-gray-400 to-green-500', 
-      tags: ['歐洲', '藝術', '前衛', '歷史'],
-      aliases: ['berlin', '德國柏林', '藝術', '前衛', '歷史']
-    },
-    { 
-      id: 13, 
-      name: '新加坡', 
-      country: '新加坡', 
-      style: '多元現代', 
-      weather: '26°C', 
-      image: '🏢', 
-      color: 'from-green-400 to-blue-500', 
-      tags: ['東南亞', '現代', '多元', '商務'],
-      aliases: ['singapore', '星國', '獅城', '花園城市']
-    },
-    { 
-      id: 14, 
-      name: '杜拜', 
-      country: '阿聯酋', 
-      style: '奢華未來', 
-      weather: '24°C', 
-      image: '🏗️', 
-      color: 'from-gold to-amber-500', 
-      tags: ['中東', '奢華', '未來', '沙漠'],
-      aliases: ['dubai', '阿聯酋杜拜', '杜拜', '奢華', '未來', '黃金']
-    },
-    { 
-      id: 15, 
-      name: '冰島雷克雅維克', 
-      country: '冰島', 
-      style: '北歐簡約', 
-      weather: '2°C', 
-      image: '🌋', 
-      color: 'from-blue-500 to-cyan-400', 
-      tags: ['歐洲', '北歐', '自然', '極光'],
-      aliases: ['iceland', 'reykjavik', '冰島', '極光', '北歐', '火山']
-    },
-    { 
-      id: 16, 
-      name: '里約熱內盧', 
-      country: '巴西', 
-      style: '熱情奔放', 
-      weather: '25°C', 
-      image: '🏖️', 
-      color: 'from-yellow-500 to-green-400', 
-      tags: ['南美', '熱情', '海灘', '嘉年華'],
-      aliases: ['rio', 'rio de janeiro', '巴西里約', '嘉年華', '熱情', '桑巴']
-    }
-  ];
 
   const handleClothesUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!event.target.files) return;
@@ -340,14 +98,12 @@ const TravelOutfitCore = () => {
     // 組合 prompt，強調真實風格
     const clothesList = uploadedClothes.map(c => c.name).join('、') || '時尚服飾';
     const destName = selectedDestination?.name || '旅行地點';
-    const destStyle = selectedDestination?.style || '時尚';
-    const destWeather = selectedDestination?.weather || '舒適天氣';
     const prompt = `
     Combine the provided face and outfit onto a realistic human figure and place them naturally at the given location. 
     Make sure the composition shows the full body (head to feet) clearly, centered in the frame, with natural proportions and lighting that matches the background. 
     The final image should look like an authentic scene at this location.
     ${clothesList ? `The outfit includes: ${clothesList}.` : ""}
-    Location: ${destName}, Style: ${destStyle}, Weather: ${destWeather}.
+    Location: ${destName}.
     `;
     
     let imageUrl = '';
@@ -359,6 +115,11 @@ const TravelOutfitCore = () => {
       });
       if (selfieImage) {
         formData.append('images', selfieImage.file, 'selfie.jpg');
+      }
+      if (selectedDestination?.image) {
+        const res = await fetch(selectedDestination.image);
+        const blob = await res.blob();
+        formData.append('images', blob, 'location.jpg');
       }
       const res = await fetch('/api/edit-image', {
         method: 'POST',
@@ -377,24 +138,24 @@ const TravelOutfitCore = () => {
     }
 
     const coachMessages = [
-      `太棒了！這套${destStyle}穿搭完美展現了你的個人魅力✨`,
-      `在${destName}穿這套一定超亮眼！色彩搭配很有品味👏`,
-      `這個搭配充滿了${destStyle}的精髓，你穿起來一定很棒🌟`,
-      `完美！這套穿搭既實用又時尚，很適合${destWeather}的天氣💫`,
-      `你的穿搭品味真不錯！這套在${destName}絕對是焦點🔥`
+      `太棒了！這套${selectedDestination?.style || '時尚'}穿搭完美展現了你的個人魅力✨`,
+      `在${selectedDestination?.name || '旅行地點'}穿這套一定超亮眼！色彩搭配很有品味👏`,
+      `這個搭配充滿了${selectedDestination?.style || '時尚'}的精髓，你穿起來一定很棒🌟`,
+      `完美！這套穿搭既實用又時尚，很適合${selectedDestination?.weather || '舒適天氣'}的天氣💫`,
+      `你的穿搭品味真不錯！這套在${selectedDestination?.name || '旅行地點'}絕對是焦點🔥`
     ];
     const randomMessage = coachMessages[Math.floor(Math.random() * coachMessages.length)];
 
     setGeneratedContent({
       type: 'image',
       url: imageUrl,
-      description: `為你在${destName}的旅行生成的${destStyle}風格穿搭照片`,
+      description: `為你在${selectedDestination?.name || '旅行地點'}的旅行生成的${selectedDestination?.style || '時尚'}風格穿搭照片`,
       coachMessage: randomMessage,
       outfitDetails: {
-        climate: destWeather,
-        style: destStyle,
+        climate: selectedDestination?.weather || '舒適天氣',
+        style: selectedDestination?.style || '時尚',
         clothesUsed: uploadedClothes.length,
-        recommendation: `這套搭配運用了你上傳的${uploadedClothes.length}件衣物中的精選單品，結合${destName}當地的${destStyle}風格特色。`
+        recommendation: `這套搭配運用了你上傳的${uploadedClothes.length}件衣物中的精選單品，結合${selectedDestination?.name || '旅行地點'}當地的${selectedDestination?.style || '時尚'}風格特色。`
       }
     });
 
@@ -538,172 +299,126 @@ const TravelOutfitCore = () => {
     </div>
   );
 
-  const Step3DestinationSelect = () => (
-    <div className="max-w-4xl mx-auto">
-      <div className="text-center mb-8">
-        <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-4">選擇旅遊目的地</h2>
-        <p className="text-gray-600">搜尋你想去的地方，我們為你推薦最適合的穿搭風格</p>
-      </div>
+  // Step 3: 目的地規劃 UX Flow（只選擇，不儲存）
+  const Step3DestinationPlanner = () => {
+    const [inputValue, setInputValue] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [result, setResult] = useState<any>(null);
+    const [error, setError] = useState('');
+    const [selectedPhoto, setSelectedPhoto] = useState(selectedDestination?.image || '');
 
-      {/* 搜尋框 */}
-      <div className="max-w-md mx-auto mb-8">
-        <form onSubmit={handleSearchSubmit} className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+    // 搜尋地點
+    const handleSearch = async () => {
+      if (!inputValue.trim()) return;
+      setLoading(true);
+      setError('');
+      setResult(null);
+      setSelectedPhoto('');
+      try {
+        const res = await fetch('/api/search_location_photos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ location_name: inputValue })
+        });
+        const data = await res.json();
+        if (data.error) {
+          setError(data.error);
+        } else {
+          setResult(data);
+        }
+      } catch (e) {
+        setError('搜尋失敗，請稍後再試');
+      }
+      setLoading(false);
+    };
+
+    // 下一步：將地點資訊與選擇的照片暫存到主流程
+    const handleNext = () => {
+      if (!result || !selectedPhoto) return;
+      setSelectedDestination({
+        name: result.name,
+        address: result.address,
+        mapUrl: result.map_url,
+        image: selectedPhoto
+      });
+      setStep(4);
+    };
+
+    return (
+      <div className="max-w-2xl mx-auto">
+        <div className="text-center mb-8">
+          <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-4">目的地規劃</h2>
+          <p className="text-gray-600">輸入目的地，搜尋並選擇代表照片</p>
+        </div>
+        <div className="flex gap-2 mb-6">
           <input
             type="text"
-            placeholder="搜尋城市、國家或風格..."
-            value={searchQuery}
-            onChange={handleInputChange}
-            onCompositionStart={() => setIsComposing(true)}
-            onCompositionEnd={() => {
-              setIsComposing(false);
-              // 當注音輸入完成時，執行搜尋
-              setTimeout(() => handleSearch(searchQuery), 0);
+            className="flex-1 border border-gray-300 rounded-lg px-4 py-2"
+            placeholder="輸入目的地，例如：東京鐵塔"
+            value={inputValue}
+            onChange={e => setInputValue(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleSearch();
+              }
             }}
-            className="w-full pl-10 pr-20 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            autoComplete="off"
+            disabled={loading}
           />
-          {searchQuery && (
-            <button
-              type="button"
-              onClick={clearSearch}
-              className="absolute right-12 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-            >
-              <X size={18} />
-            </button>
-          )}
           <button
-            type="submit"
-            className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-purple-500 text-white p-1.5 rounded-md hover:bg-purple-600 transition-colors"
+            onClick={handleSearch}
+            disabled={loading || !inputValue.trim()}
+            className="bg-gradient-to-r from-pink-500 to-purple-600 text-white px-6 py-2 rounded-lg hover:shadow-lg transition-all"
           >
-            <Search size={16} />
+            {loading ? '搜尋中...' : '搜尋地點'}
           </button>
-        </form>
-        
-        {/* 搜尋提示 */}
-        {searchQuery && filteredDestinations.length === 0 && !isComposing && (
-          <div className="mt-3 p-3 bg-yellow-50 rounded-lg">
-            <p className="text-sm text-yellow-700">找不到相關目的地，試試搜尋：</p>
-            <p className="text-xs text-yellow-600 mt-1">
-              中文：東京、韓國、海灘、時尚、度假、浪漫、復古<br/>
-              英文：tokyo、korea、paris、london、bali
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* 目的地顯示 */}
-      <div className="mb-4">
-        {searchQuery ? (
-          <p className="text-sm text-gray-600 mb-4">
-            {filteredDestinations.length > 0 
-              ? `找到 ${filteredDestinations.length} 個相關目的地` 
-              : ''}
-          </p>
-        ) : (
-          <p className="text-sm text-gray-600 mb-4">熱門目的地推薦</p>
-        )}
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-        {getDisplayDestinations().map(dest => (
-          <div
-            key={dest.id}
-            onClick={() => setSelectedDestination(dest)}
-            className={`relative overflow-hidden rounded-xl cursor-pointer transition-all transform hover:scale-105 ${
-              selectedDestination?.id === dest.id 
-                ? 'ring-4 ring-purple-500 shadow-xl' 
-                : 'shadow-lg hover:shadow-xl'
-            }`}
-          >
-            <div className={`bg-gradient-to-br ${dest.color} p-6 text-white`}>
-              <div className="text-4xl mb-3 text-center">{dest.image}</div>
-              <h3 className="text-xl font-bold text-center mb-1">{dest.name}</h3>
-              <p className="text-sm text-center opacity-90 mb-3">{dest.country}</p>
-              
-              <div className="bg-white bg-opacity-20 rounded-lg p-3 backdrop-blur-sm">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm">風格</span>
-                  <span className="text-sm font-medium">{dest.style}</span>
+        </div>
+        {error && <div className="text-red-600 mb-4">{error}</div>}
+        {result && (
+          <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
+            <div className="mb-2">
+              <span className="font-bold">地點：</span>{result.name}
+            </div>
+            <div className="mb-2">
+              <span className="font-bold">地址：</span>{result.address}
+            </div>
+            <div className="mb-4">
+              <a href={result.map_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">點擊查看 Google 地圖</a>
+            </div>
+            <div className="mb-4 grid grid-cols-2 md:grid-cols-3 gap-3">
+              {result.images && result.images.map((url: string, idx: number) => (
+                <div key={idx} className="relative group">
+                  <img
+                    src={url}
+                    alt={`代表照片${idx+1}`}
+                    className={`rounded-lg cursor-pointer border-4 transition-all duration-200 ${selectedPhoto === url ? 'border-purple-500' : 'border-transparent'}`}
+                    onClick={() => setSelectedPhoto(url)}
+                  />
+                  {selectedPhoto === url && (
+                    <div className="absolute inset-0 bg-purple-500/30 flex items-center justify-center rounded-lg pointer-events-none">
+                      <Check className="text-white" size={48} />
+                    </div>
+                  )}
                 </div>
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm">天氣</span>
-                  <span className="text-sm font-medium">{dest.weather}</span>
-                </div>
-                
-                {/* 標籤 */}
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {dest.tags.slice(0, 3).map((tag, index) => (
-                    <span key={index} className="bg-white bg-opacity-30 text-xs px-2 py-1 rounded">
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              {selectedDestination?.id === dest.id && (
-                <div className="absolute top-3 right-3 bg-white rounded-full p-1">
-                  <Check className="text-purple-600" size={16} />
-                </div>
-              )}
+              ))}
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setStep(2)}
+                className="bg-gray-200 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-300 transition-all"
+              >返回上一步</button>
+              <button
+                onClick={handleNext}
+                disabled={!selectedPhoto}
+                className="bg-gradient-to-r from-pink-500 to-purple-600 text-white px-8 py-2 rounded-lg hover:shadow-lg transition-all"
+              >下一步</button>
             </div>
           </div>
-        ))}
+        )}
       </div>
-
-      {/* 顯示更多選項 */}
-      {!searchQuery && (
-        <div className="text-center mt-8">
-          <p className="text-gray-500 text-sm mb-4">找不到想要的目的地？試試搜尋功能！支援中英文輸入</p>
-          <div className="flex flex-wrap justify-center gap-2">
-            {['海灘', '雪山', '沙漠', '森林', '城市', '鄉村', '時尚', '復古', '現代', '度假', '浪漫', '奢華'].map((tag, index) => (
-              <button
-                key={index}
-                onClick={() => {
-                  setSearchQuery(tag);
-                  handleSearch(tag);
-                }}
-                className="bg-gray-100 hover:bg-purple-100 text-gray-700 px-3 py-1 rounded-full text-sm transition-colors"
-              >
-                {tag}
-              </button>
-            ))}
-          </div>
-          <div className="flex flex-wrap justify-center gap-2 mt-2">
-            {['paris', 'tokyo', 'seoul', 'london', 'bali', 'milan'].map((tag, index) => (
-              <button
-                key={index}
-                onClick={() => {
-                  setSearchQuery(tag);
-                  handleSearch(tag);
-                }}
-                className="bg-blue-50 hover:bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm transition-colors"
-              >
-                {tag}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {selectedDestination && (
-        <div className="flex justify-center mt-8 gap-4">
-          <button
-            onClick={() => setStep(2)}
-            className="bg-gray-200 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-300 transition-all"
-          >
-            返回上一步
-          </button>
-          <button
-            onClick={() => setStep(4)}
-            className="w-full md:w-auto bg-gradient-to-r from-pink-500 to-purple-600 text-white px-8 py-3 rounded-lg hover:shadow-lg transition-all flex items-center gap-2"
-          >
-            開始生成旅遊照片
-            <Sparkles size={20} />
-          </button>
-        </div>
-      )}
-    </div>
-  );
+    );
+  };
 
   const Step4Generate = () => (
     <div className="max-w-md mx-auto text-center">
@@ -711,6 +426,34 @@ const TravelOutfitCore = () => {
         <>
           <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-4">準備生成你的旅遊穿搭照片</h2>
           <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
+            <div className="mb-6">
+              <h3 className="font-bold text-gray-700 mb-2">你已選擇的照片</h3>
+              <div className="grid grid-cols-3 gap-4 items-start">
+                <div>
+                  <div className="text-sm text-gray-500 mb-1">衣服照片</div>
+                  <div className="flex flex-wrap gap-2">
+                    {uploadedClothes.map((item, idx) => (
+                      <img key={idx} src={item.preview as string} alt={item.name} className="w-16 h-16 object-cover rounded-md border" />
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500 mb-1">自拍照</div>
+                  {selfieImage && (
+                    <img src={selfieImage.preview as string} alt="自拍照" className="w-16 h-16 object-cover rounded-md border" />
+                  )}
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500 mb-1">地點代表照片</div>
+                  {selectedDestination?.image && (
+                    <div>
+                      <img src={selectedDestination.image} alt="地點代表照片" className="w-16 h-16 object-cover rounded-md border mb-1" />
+                      <div className="text-xs text-gray-600 truncate max-w-[64px]">{selectedDestination.name}</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
             <div className="grid grid-cols-3 gap-4 mb-6">
               <div className="text-center">
                 <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-2">
@@ -737,11 +480,10 @@ const TravelOutfitCore = () => {
                 </p>
               </div>
             </div>
-            
             <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-4">
               <h3 className="font-bold text-gray-800 mb-2">即將為你生成：</h3>
               <p className="text-gray-600">
-                適合在{selectedDestination && selectedDestination.name}穿著的{selectedDestination && selectedDestination.style}風格旅遊照片
+                適合在{selectedDestination && selectedDestination.name}穿著的旅遊穿搭照片
               </p>
             </div>
           </div>
@@ -906,7 +648,7 @@ const TravelOutfitCore = () => {
         </div>
         {step === 1 && <Step1ClothesUpload />}
         {step === 2 && <Step2SelfieUpload />}
-        {step === 3 && <Step3DestinationSelect />}
+        {step === 3 && <Step3DestinationPlanner />}
         {step === 4 && <Step4Generate />}
       </main>
 
