@@ -165,6 +165,18 @@ const TravelOutfitCore = () => {
     setIsGenerating(false);
   };
 
+  const handleDownloadImage = () => {
+    if (generatedContent?.url) {
+      // 創建一個臨時的 a 標籤來下載
+      const link = document.createElement('a');
+      link.href = generatedContent.url;
+      link.download = `travel-outfit-${selectedDestination?.name || 'photo'}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
   const Step1ClothesUpload = () => (
     <div className="mx-auto">
       <div className="text-center mb-8">
@@ -505,7 +517,10 @@ const TravelOutfitCore = () => {
               </div>
             </div>
             <div className="flex justify-center gap-4 flex-wrap">
-              <button className="bg-gradient-to-r from-blue-500 to-cyan-600 text-white px-6 py-3 rounded-lg hover:shadow-lg transition-all flex items-center gap-2">
+              <button 
+                onClick={handleDownloadImage}
+                className="bg-gradient-to-r from-blue-500 to-cyan-600 text-white px-6 py-3 rounded-lg hover:shadow-lg transition-all flex items-center gap-2"
+              >
                 <Download size={20} />
                 下載照片
               </button>
