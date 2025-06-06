@@ -62,12 +62,12 @@ const TravelOutfitCore = () => {
           {
             id: Date.now() + Math.random(),
             file: file,
-            preview: e.target ? e.target.result : null,
+            preview: e.target?.result || null,
             name: file.name
           }
         ]);
       };
-      reader.readAsDataURL(typeof file === 'string' ? file : file);
+      reader.readAsDataURL(file);
     });
   };
 
@@ -202,17 +202,17 @@ const TravelOutfitCore = () => {
       </div>
 
       {uploadedClothes.length > 0 && (
-        <div className="mt-8">
-          <h3 className="text-lg font-medium text-gray-800 mb-4">已上傳的衣服 ({uploadedClothes.length})</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 md:gap-4">
+        <div className="mt-8 mx-auto">
+          <h3 className="flex items-center justify-center text-lg font-medium text-gray-800 mb-4">已上傳的衣服 ({uploadedClothes.length})</h3>
+          <div className="flex flex-wrap justify-center gap-4">
             {uploadedClothes.map(item => (
               <div key={item.id} className="relative">
-                <img 
-                  src={item.preview as string} 
+                <img
+                  src={item.preview as string}
                   alt={item.name}
-                  className="w-full h-32 object-cover rounded-lg shadow-md"
+                  className="mx-auto w-32 h-40 object-contain rounded-lg shadow-lg bg-white"
                 />
-                <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-20 transition-all rounded-lg flex items-center justify-center">
+                <div className="absolute inset-0 bg-opacity-0 hover:bg-opacity-20 transition-all rounded-lg flex items-center justify-center">
                   <Check className="text-white opacity-0 hover:opacity-100" size={24} />
                 </div>
               </div>
