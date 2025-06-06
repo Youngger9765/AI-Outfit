@@ -322,7 +322,7 @@ const TravelOutfitCore = () => {
         } else {
           setResult(data);
         }
-      } catch (e) {
+      } catch () {
         setError('搜尋失敗，請稍後再試');
       }
       setLoading(false);
