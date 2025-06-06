@@ -47,7 +47,6 @@ const TravelOutfitCore = () => {
   >(null);
   const [generatedContent, setGeneratedContent] = useState<GeneratedContent | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [selectedPhoto, setSelectedPhoto] = useState('');
   
   const clothesInputRef = useRef<HTMLInputElement>(null);
   const selfieInputRef = useRef<HTMLInputElement>(null);
@@ -135,7 +134,7 @@ const TravelOutfitCore = () => {
     const coachMessages = [
       `太棒了！這套穿搭完美展現了你的個人魅力✨`,
       `在${selectedDestination?.name || '旅行地點'}穿這套一定超亮眼！色彩搭配很有品味👏`,
-      `這個搭配充滿了你的風格精髓，你穿起來一定很棒��`,
+      `這個搭配充滿了你的風格精髓，你穿起來一定很棒`,
       `完美！這套穿搭既實用又時尚，很適合旅途中的你💫`,
       `你的穿搭品味真不錯！這套在${selectedDestination?.name || '旅行地點'}絕對是焦點🔥`
     ];
@@ -298,7 +297,9 @@ const TravelOutfitCore = () => {
   const Step3DestinationPlanner = () => {
     const [inputValue, setInputValue] = useState('');
     const [loading, setLoading] = useState(false);
-    const [result, setResult] = useState<any>(null);
+    const [result, setResult] = useState<
+      { name: string; address: string; map_url: string; images: string[] } | null
+    >(null);
     const [error, setError] = useState('');
     const [selectedPhoto, setSelectedPhoto] = useState(selectedDestination?.image || '');
 
