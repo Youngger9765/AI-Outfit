@@ -10,9 +10,7 @@ import {
   Download,
   Share2,
   ChevronRight,
-  Check,
-  Search,
-  X
+  Check
 } from 'lucide-react';
 
 type UploadedCloth = {
@@ -44,15 +42,12 @@ const TravelOutfitCore = () => {
   const [step, setStep] = useState(1);
   const [uploadedClothes, setUploadedClothes] = useState<UploadedCloth[]>([]);
   const [selfieImage, setSelfieImage] = useState<SelfieImage | null>(null);
-  const [selectedDestination, setSelectedDestination] = useState<any | null>(null);
+  const [selectedDestination, setSelectedDestination] = useState<
+    { name: string; address: string; mapUrl: string; image: string } | null
+  >(null);
   const [generatedContent, setGeneratedContent] = useState<GeneratedContent | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [locationName, setLocationName] = useState('');
-  const [searching, setSearching] = useState(false);
-  const [locationInfo, setLocationInfo] = useState<any>(null);
   const [selectedPhoto, setSelectedPhoto] = useState('');
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   
   const clothesInputRef = useRef<HTMLInputElement>(null);
   const selfieInputRef = useRef<HTMLInputElement>(null);
@@ -138,10 +133,10 @@ const TravelOutfitCore = () => {
     }
 
     const coachMessages = [
-      `太棒了！這套${selectedDestination?.style || '時尚'}穿搭完美展現了你的個人魅力✨`,
+      `太棒了！這套穿搭完美展現了你的個人魅力✨`,
       `在${selectedDestination?.name || '旅行地點'}穿這套一定超亮眼！色彩搭配很有品味👏`,
-      `這個搭配充滿了${selectedDestination?.style || '時尚'}的精髓，你穿起來一定很棒🌟`,
-      `完美！這套穿搭既實用又時尚，很適合${selectedDestination?.weather || '舒適天氣'}的天氣💫`,
+      `這個搭配充滿了你的風格精髓，你穿起來一定很棒��`,
+      `完美！這套穿搭既實用又時尚，很適合旅途中的你💫`,
       `你的穿搭品味真不錯！這套在${selectedDestination?.name || '旅行地點'}絕對是焦點🔥`
     ];
     const randomMessage = coachMessages[Math.floor(Math.random() * coachMessages.length)];
@@ -149,13 +144,13 @@ const TravelOutfitCore = () => {
     setGeneratedContent({
       type: 'image',
       url: imageUrl,
-      description: `為你在${selectedDestination?.name || '旅行地點'}的旅行生成的${selectedDestination?.style || '時尚'}風格穿搭照片`,
+      description: `為你在${selectedDestination?.name || '旅行地點'}的旅行生成的專屬穿搭照片`,
       coachMessage: randomMessage,
       outfitDetails: {
-        climate: selectedDestination?.weather || '舒適天氣',
-        style: selectedDestination?.style || '時尚',
+        climate: '',
+        style: '',
         clothesUsed: uploadedClothes.length,
-        recommendation: `這套搭配運用了你上傳的${uploadedClothes.length}件衣物中的精選單品，結合${selectedDestination?.name || '旅行地點'}當地的${selectedDestination?.style || '時尚'}風格特色。`
+        recommendation: `這套搭配運用了你上傳的${uploadedClothes.length}件衣物中的精選單品，並結合你選擇的旅遊地點特色。`
       }
     });
 
