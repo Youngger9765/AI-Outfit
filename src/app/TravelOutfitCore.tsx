@@ -39,7 +39,6 @@ interface GeneratedContent {
 }
 
 const TravelOutfitCore = () => {
-  const [step, setStep] = useState(1);
   const [uploadedClothes, setUploadedClothes] = useState<UploadedCloth[]>([]);
   const [selfieImage, setSelfieImage] = useState<SelfieImage | null>(null);
   const [selectedDestination, setSelectedDestination] = useState<
@@ -50,6 +49,16 @@ const TravelOutfitCore = () => {
   
   const clothesInputRef = useRef<HTMLInputElement>(null);
   const selfieInputRef = useRef<HTMLInputElement>(null);
+  const clothesRef = useRef<HTMLDivElement | null>(null);
+  const selfieRef = useRef<HTMLDivElement | null>(null);
+  const destinationRef = useRef<HTMLDivElement | null>(null);
+  const generateRef = useRef<HTMLDivElement | null>(null);
+
+  // 新增 Step3 相關 state
+  const [destinationResult, setDestinationResult] = useState<
+    { name: string; address: string; map_url: string; images: string[] } | null
+  >(null);
+  const [selectedPhoto, setSelectedPhoto] = useState<string>('');
 
   const handleClothesUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!event.target.files) return;
@@ -229,18 +238,6 @@ const TravelOutfitCore = () => {
           </div>
         </div>
       )}
-
-      {uploadedClothes.length > 0 && (
-        <div className="flex justify-center mt-8">
-          <button
-            onClick={() => setStep(2)}
-            className="w-full md:w-auto bg-gradient-to-r from-pink-500 to-purple-600 text-white px-8 py-3 rounded-lg hover:shadow-lg transition-all flex items-center gap-2"
-          >
-            下一步：上傳自拍照
-            <ChevronRight size={20} />
-          </button>
-        </div>
-      )}
     </div>
   );
 
@@ -281,36 +278,24 @@ const TravelOutfitCore = () => {
           className="hidden"
         />
       </div>
-
-      {selfieImage && (
-        <div className="flex justify-center mt-8 gap-4">
-          <button
-            onClick={() => setStep(1)}
-            className="bg-gray-200 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-300 transition-all"
-          >
-            返回上一步
-          </button>
-          <button
-            onClick={() => setStep(3)}
-            className="w-full md:w-auto bg-gradient-to-r from-pink-500 to-purple-600 text-white px-8 py-3 rounded-lg hover:shadow-lg transition-all flex items-center gap-2"
-          >
-            下一步：選擇目的地
-            <ChevronRight size={20} />
-          </button>
-        </div>
-      )}
     </div>
   );
 
   // Step 3: 目的地規劃 UX Flow（只選擇，不儲存）
-  const Step3DestinationPlanner = () => {
+  const Step3DestinationPlanner = ({
+    result,
+    setResult,
+    selectedPhoto,
+    setSelectedPhoto
+  } : {
+    result: { name: string; address: string; map_url: string; images: string[] } | null,
+    setResult: React.Dispatch<React.SetStateAction<{ name: string; address: string; map_url: string; images: string[] } | null>>,
+    selectedPhoto: string,
+    setSelectedPhoto: React.Dispatch<React.SetStateAction<string>>
+  }) => {
     const [inputValue, setInputValue] = useState('');
     const [loading, setLoading] = useState(false);
-    const [result, setResult] = useState<
-      { name: string; address: string; map_url: string; images: string[] } | null
-    >(null);
     const [error, setError] = useState('');
-    const [selectedPhoto, setSelectedPhoto] = useState(selectedDestination?.image || '');
 
     // 搜尋地點
     const handleSearch = async () => {
@@ -346,7 +331,6 @@ const TravelOutfitCore = () => {
         mapUrl: result.map_url,
         image: selectedPhoto
       });
-      setStep(4);
     };
 
     return (
@@ -407,17 +391,6 @@ const TravelOutfitCore = () => {
                   )}
                 </div>
               ))}
-            </div>
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setStep(2)}
-                className="bg-gray-200 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-300 transition-all"
-              >返回上一步</button>
-              <button
-                onClick={handleNext}
-                disabled={!selectedPhoto}
-                className="bg-gradient-to-r from-pink-500 to-purple-600 text-white px-8 py-2 rounded-lg hover:shadow-lg transition-all"
-              >下一步</button>
             </div>
           </div>
         )}
@@ -611,7 +584,6 @@ const TravelOutfitCore = () => {
             </button>
             <button
               onClick={() => {
-                setStep(1);
                 setUploadedClothes([]);
                 setSelfieImage(null);
                 setSelectedDestination(null);
@@ -626,6 +598,12 @@ const TravelOutfitCore = () => {
       )}
     </div>
   );
+
+  const scrollToRef = (ref: React.RefObject<HTMLDivElement | null>) => {
+    if (ref.current) {
+      ref.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50">
@@ -646,15 +624,66 @@ const TravelOutfitCore = () => {
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="mx-auto px-4 py-8">
-        <div className="mx-auto">
-          <StepIndicator currentStep={step} totalSteps={4} />
+      {/* Main Content 一頁式流程 */}
+      <main className="mx-auto px-4 py-8 max-w-2xl">
+        {/* 步驟1：衣服上傳 */}
+        <div ref={clothesRef} className="mb-16">
+          <Step1ClothesUpload />
+          <div className="flex justify-center mt-8">
+            <button
+              onClick={() => scrollToRef(selfieRef)}
+              className="bg-gradient-to-r from-pink-500 to-purple-600 text-white px-8 py-3 rounded-lg hover:shadow-lg transition-all"
+              disabled={uploadedClothes.length === 0}
+            >
+              下一步：上傳自拍照
+            </button>
+          </div>
         </div>
-        {step === 1 && <Step1ClothesUpload />}
-        {step === 2 && <Step2SelfieUpload />}
-        {step === 3 && <Step3DestinationPlanner />}
-        {step === 4 && <Step4Generate />}
+        {/* 步驟2：自拍上傳 */}
+        <div ref={selfieRef} className="mb-16">
+          <Step2SelfieUpload />
+          <div className="flex justify-center mt-8">
+            <button
+              onClick={() => scrollToRef(destinationRef)}
+              className="bg-gradient-to-r from-pink-500 to-purple-600 text-white px-8 py-3 rounded-lg hover:shadow-lg transition-all"
+              disabled={!selfieImage}
+            >
+              下一步：選擇目的地
+            </button>
+          </div>
+        </div>
+        {/* 步驟3：目的地選擇 */}
+        <div ref={destinationRef} className="mb-16">
+          <Step3DestinationPlanner
+            result={destinationResult}
+            setResult={setDestinationResult}
+            selectedPhoto={selectedPhoto}
+            setSelectedPhoto={setSelectedPhoto}
+          />
+          <div className="flex justify-center mt-8">
+            <button
+              onClick={() => {
+                if (destinationResult && selectedPhoto) {
+                  setSelectedDestination({
+                    name: destinationResult.name,
+                    address: destinationResult.address,
+                    mapUrl: destinationResult.map_url,
+                    image: selectedPhoto
+                  });
+                  scrollToRef(generateRef);
+                }
+              }}
+              className="bg-gradient-to-r from-pink-500 to-purple-600 text-white px-8 py-3 rounded-lg hover:shadow-lg transition-all"
+              disabled={!destinationResult || !selectedPhoto}
+            >
+              下一步：生成穿搭照片
+            </button>
+          </div>
+        </div>
+        {/* 步驟4：生成結果 */}
+        <div ref={generateRef} className="mb-16">
+          <Step4Generate />
+        </div>
       </main>
 
       {/* Footer */}
