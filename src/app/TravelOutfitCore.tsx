@@ -212,6 +212,15 @@ const TravelOutfitCore = () => {
                   alt={item.name}
                   className="mx-auto w-32 h-40 object-contain rounded-lg shadow-lg bg-white"
                 />
+                <button
+                  type="button"
+                  onClick={() => setUploadedClothes(prev => prev.filter(c => c.id !== item.id))}
+                  className="absolute top-1 right-1 bg-white bg-opacity-80 rounded-full p-1 shadow hover:bg-red-500 hover:text-white transition-colors z-10"
+                  style={{ lineHeight: 1 }}
+                  aria-label="刪除單品"
+                >
+                  ×
+                </button>
                 <div className="absolute inset-0 bg-opacity-0 hover:bg-opacity-20 transition-all rounded-lg flex items-center justify-center">
                   <Check className="text-white opacity-0 hover:opacity-100" size={24} />
                 </div>
