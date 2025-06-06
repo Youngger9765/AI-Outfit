@@ -9,9 +9,9 @@ import {
   Play,
   Download,
   Share2,
-  ChevronRight,
   Check
 } from 'lucide-react';
+import Image from 'next/image';
 
 type UploadedCloth = {
   id: number;
@@ -165,27 +165,6 @@ const TravelOutfitCore = () => {
     setIsGenerating(false);
   };
 
-  const StepIndicator = ({ currentStep, totalSteps }: { currentStep: number; totalSteps: number }) => (
-    <div className="flex items-center justify-center mb-8">
-      {Array.from({ length: totalSteps }, (_, i) => (
-        <div key={i} className="flex items-center">
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${
-            i + 1 <= currentStep 
-              ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white border-transparent' 
-              : 'bg-white text-gray-400 border-gray-300'
-          }`}>
-            {i + 1 <= currentStep ? <Check size={16} /> : i + 1}
-          </div>
-          {i < totalSteps - 1 && (
-            <div className={`w-12 h-1 mx-2 ${
-              i + 1 < currentStep ? 'bg-gradient-to-r from-pink-500 to-purple-600' : 'bg-gray-300'
-            }`} />
-          )}
-        </div>
-      ))}
-    </div>
-  );
-
   const Step1ClothesUpload = () => (
     <div className="mx-auto">
       <div className="text-center mb-8">
@@ -216,6 +195,8 @@ const TravelOutfitCore = () => {
           <div className="flex flex-wrap justify-center gap-4">
             {uploadedClothes.map(item => (
               <div key={item.id} className="relative">
+                {/* FileReader 產生的 data URL 只能用 <img>，加 eslint disable */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={item.preview as string}
                   alt={item.name}
@@ -254,6 +235,8 @@ const TravelOutfitCore = () => {
       >
         {selfieImage ? (
           <div className="relative">
+            {/* FileReader 產生的 data URL 只能用 <img>，加 eslint disable */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img 
               src={selfieImage.preview as string} 
               alt="自拍照預覽"
@@ -322,17 +305,6 @@ const TravelOutfitCore = () => {
       setLoading(false);
     };
 
-    // 下一步：將地點資訊與選擇的照片暫存到主流程
-    const handleNext = () => {
-      if (!result || !selectedPhoto) return;
-      setSelectedDestination({
-        name: result.name,
-        address: result.address,
-        mapUrl: result.map_url,
-        image: selectedPhoto
-      });
-    };
-
     return (
       <div className="max-w-2xl mx-auto">
         <div className="text-center mb-8">
@@ -378,11 +350,14 @@ const TravelOutfitCore = () => {
             <div className="mb-4 grid grid-cols-2 md:grid-cols-3 gap-3">
               {result.images && result.images.map((url: string, idx: number) => (
                 <div key={idx} className="relative group">
-                  <img
+                  <Image
                     src={url}
                     alt={`代表照片${idx+1}`}
+                    width={200}
+                    height={120}
                     className={`rounded-lg cursor-pointer border-4 transition-all duration-200 ${selectedPhoto === url ? 'border-purple-500' : 'border-transparent'}`}
                     onClick={() => setSelectedPhoto(url)}
+                    unoptimized
                   />
                   {selectedPhoto === url && (
                     <div className="absolute inset-0 bg-purple-500/30 flex items-center justify-center rounded-lg pointer-events-none">
@@ -398,84 +373,86 @@ const TravelOutfitCore = () => {
     );
   };
 
-  const Step4Generate = () => (
+  // Step4 準備區塊
+  const Step4Prepare = () => (
     <div className="max-w-md mx-auto text-center">
-      {!generatedContent && !isGenerating && (
-        <>
-          <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-4">準備生成你的旅遊穿搭照片</h2>
-          <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
-            <div className="mb-6">
-              <h3 className="font-bold text-gray-700 mb-2">你已選擇的照片</h3>
-              <div className="grid grid-cols-3 gap-4 items-start">
-                <div>
-                  <div className="text-sm text-gray-500 mb-1">衣服照片</div>
-                  <div className="flex flex-wrap gap-2">
-                    {uploadedClothes.map((item, idx) => (
-                      <img key={idx} src={item.preview as string} alt={item.name} className="w-16 h-16 object-cover rounded-md border" />
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-sm text-gray-500 mb-1">自拍照</div>
-                  {selfieImage && (
-                    <img src={selfieImage.preview as string} alt="自拍照" className="w-16 h-16 object-cover rounded-md border" />
-                  )}
-                </div>
-                <div>
-                  <div className="text-sm text-gray-500 mb-1">地點代表照片</div>
-                  {selectedDestination?.image && (
-                    <div>
-                      <img src={selectedDestination.image} alt="地點代表照片" className="w-16 h-16 object-cover rounded-md border mb-1" />
-                      <div className="text-xs text-gray-600 truncate max-w-[64px]">{selectedDestination.name}</div>
-                    </div>
-                  )}
-                </div>
+      <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-4">準備生成你的旅遊穿搭照片</h2>
+      <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
+        <div className="mb-6">
+          <h3 className="font-bold text-gray-700 mb-2">你已選擇的照片</h3>
+          <div className="grid grid-cols-3 gap-4 items-start">
+            <div>
+              <div className="text-sm text-gray-500 mb-1">衣服照片</div>
+              <div className="flex flex-wrap gap-2">
+                {uploadedClothes.map((item, idx) => (
+                  // FileReader 產生的 data URL 只能用 <img>，加 eslint disable
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img key={idx} src={item.preview as string} alt={item.name} className="w-16 h-16 object-cover rounded-md border" />
+                ))}
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-4 mb-6">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                  <Upload className="text-purple-600" size={24} />
-                </div>
-                <p className="text-sm text-gray-600">
-                  {uploadedClothes.length} 件衣服
-                </p>
-              </div>
-              <div className="text-center">
-                <div className="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                  <User className="text-pink-600" size={24} />
-                </div>
-                <p className="text-sm text-gray-600">
-                  1 張自拍照
-                </p>
-              </div>
-              <div className="text-center">
-                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                  <MapPin className="text-blue-600" size={24} />
-                </div>
-                <p className="text-sm text-gray-600">
-                  {selectedDestination && selectedDestination.name}
-                </p>
-              </div>
+            <div>
+              <div className="text-sm text-gray-500 mb-1">自拍照</div>
+              {selfieImage && (
+                // FileReader 產生的 data URL 只能用 <img>，加 eslint disable
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={selfieImage.preview as string} alt="自拍照" className="w-16 h-16 object-cover rounded-md border" />
+              )}
             </div>
-            <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-4">
-              <h3 className="font-bold text-gray-800 mb-2">即將為你生成：</h3>
-              <p className="text-gray-600">
-                適合在{selectedDestination && selectedDestination.name}穿著的旅遊穿搭照片
-              </p>
+            <div>
+              <div className="text-sm text-gray-500 mb-1">地點代表照片</div>
+              {selectedDestination?.image && (
+                <div>
+                  <Image src={selectedDestination.image} alt="地點代表照片" width={64} height={64} className="w-16 h-16 object-cover rounded-md border mb-1" unoptimized />
+                  <div className="text-xs text-gray-600 truncate max-w-[64px]">{selectedDestination.name}</div>
+                </div>
+              )}
             </div>
           </div>
-
-          <button
-            onClick={generateTravelContent}
-            className="w-full md:w-auto bg-gradient-to-r from-pink-500 to-purple-600 text-white px-12 py-4 rounded-lg hover:shadow-lg transition-all flex items-center gap-3 mx-auto text-lg font-medium"
-          >
-            <Sparkles size={24} />
-            開始 AI 生成
-          </button>
-        </>
+        </div>
+        <div className="grid grid-cols-3 gap-4 mb-6">
+          <div className="text-center">
+            <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-2">
+              <Upload className="text-purple-600" size={24} />
+            </div>
+            <p className="text-sm text-gray-600">
+              {uploadedClothes.length} 件衣服
+            </p>
+          </div>
+          <div className="text-center">
+            <div className="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-2">
+              <User className="text-pink-600" size={24} />
+            </div>
+            <p className="text-sm text-gray-600">
+              1 張自拍照
+            </p>
+          </div>
+          <div className="text-center">
+            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2">
+              <MapPin className="text-blue-600" size={24} />
+            </div>
+            <p className="text-sm text-gray-600">
+              {selectedDestination && selectedDestination.name}
+            </p>
+          </div>
+        </div>
+        <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-4">
+          <h3 className="font-bold text-gray-800 mb-2">即將為你生成：</h3>
+          <p className="text-gray-600">
+            適合在{selectedDestination && selectedDestination.name}穿著的旅遊穿搭照片
+          </p>
+        </div>
+      </div>
+      {/* 生成按鈕與 loading 狀態 */}
+      {!isGenerating && !generatedContent && (
+        <button
+          onClick={generateTravelContent}
+          className="w-full md:w-auto bg-gradient-to-r from-pink-500 to-purple-600 text-white px-12 py-4 rounded-lg hover:shadow-lg transition-all flex items-center gap-3 mx-auto text-lg font-medium"
+        >
+          <Sparkles size={24} />
+          開始 AI 生成
+        </button>
       )}
-
       {isGenerating && (
         <div className="text-center">
           <div className="w-24 h-24 mx-auto mb-6">
@@ -483,48 +460,21 @@ const TravelOutfitCore = () => {
           </div>
           <h2 className="text-2xl font-bold text-gray-800 mb-4">AI 正在生成你的旅遊穿搭照片...</h2>
           <p className="text-gray-600 mb-4">分析你的衣服、身形和目的地風格</p>
-          
-          <div className="bg-white rounded-lg p-4 max-w-md mx-auto mb-4">
-            <div className="space-y-2 text-left">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <span className="text-sm text-gray-600">✓ 分析 {uploadedClothes.length} 件上傳衣物</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <span className="text-sm text-gray-600">✓ 識別身形特徵</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
-                <span className="text-sm text-gray-600">🔄 匹配 {selectedDestination && selectedDestination.name} 風格</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
-                <span className="text-sm text-gray-400">⏳ 生成專屬穿搭照片</span>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded-lg p-4 max-w-md mx-auto">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-gray-600">生成進度</span>
-              <span className="text-sm text-purple-600 font-medium">正在處理...</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div className="bg-gradient-to-r from-pink-500 to-purple-600 h-2 rounded-full animate-pulse w-full"></div>
-            </div>
-          </div>
         </div>
       )}
+    </div>
+  );
 
+  // Step4 生成結果區塊
+  const Step4Result = () => (
+    <>
       {generatedContent && (
-        <div className="text-center">
+        <div className="max-w-md mx-auto text-center mt-12">
           <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-4">你的專屬旅遊穿搭照片 ✨</h2>
-          
           <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
             {generatedContent?.url ? (
-              <img src={generatedContent.url} alt="AI生成穿搭" style={{ maxWidth: 400 }} />
+              <Image src={generatedContent.url} alt="AI生成穿搭" width={400} height={400} style={{ maxWidth: 400 }} unoptimized />
             ) : null}
-            
             {/* AI 教練評語 */}
             <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-4 mb-4">
               <div className="flex items-center gap-2 mb-2">
@@ -533,18 +483,17 @@ const TravelOutfitCore = () => {
               </div>
               <p className="text-gray-700">{generatedContent.coachMessage}</p>
             </div>
-            
             {/* 穿搭詳情 */}
             <div className="bg-gray-50 rounded-lg p-4 mb-6 text-left">
               <h4 className="font-bold text-gray-800 mb-3">穿搭分析報告</h4>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-gray-600">目的地風格：</span>
-                  <span className="font-medium">{generatedContent.outfitDetails.style}</span>
+                  <span className="text-gray-600">目的地：</span>
+                  <span className="font-medium">{selectedDestination?.name}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">當地天氣：</span>
-                  <span className="font-medium">{generatedContent.outfitDetails.climate}</span>
+                  <span className="text-gray-600">當地地址：</span>
+                  <span className="font-medium">{selectedDestination?.address}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">使用衣物：</span>
@@ -555,7 +504,6 @@ const TravelOutfitCore = () => {
                 <p className="text-xs text-gray-600">{generatedContent.outfitDetails.recommendation}</p>
               </div>
             </div>
-            
             <div className="flex justify-center gap-4 flex-wrap">
               <button className="bg-gradient-to-r from-blue-500 to-cyan-600 text-white px-6 py-3 rounded-lg hover:shadow-lg transition-all flex items-center gap-2">
                 <Download size={20} />
@@ -571,11 +519,9 @@ const TravelOutfitCore = () => {
               </button>
             </div>
           </div>
-
           <div className="flex justify-center gap-4">
             <button
               onClick={() => {
-                // 重新生成另一套穿搭
                 generateTravelContent();
               }}
               className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-8 py-3 rounded-lg hover:shadow-lg transition-all"
@@ -596,7 +542,7 @@ const TravelOutfitCore = () => {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 
   const scrollToRef = (ref: React.RefObject<HTMLDivElement | null>) => {
@@ -682,7 +628,8 @@ const TravelOutfitCore = () => {
         </div>
         {/* 步驟4：生成結果 */}
         <div ref={generateRef} className="mb-16">
-          <Step4Generate />
+          <Step4Prepare />
+          <Step4Result />
         </div>
       </main>
 
