@@ -697,3 +697,36 @@ interface SelfieItem {
 ### UX Flow 補充
 - 登入 → 進入「自拍庫」頁面 → 上傳/管理自拍照
 - 穿搭流程選擇自拍時，可從自拍庫挑選
+
+## 地點收藏與儲存功能
+
+- 每位用戶可儲存多個常用/喜愛的旅遊地點
+- 地點可自訂名稱、標籤（如：賞櫻、購物、海邊、親子等）、分類
+- 可儲存地點代表照片、地圖連結、地址等資訊
+- 穿搭流程可直接從收藏地點快速選擇
+
+### API 規劃
+- `GET /api/locations`：取得使用者所有收藏地點
+- `POST /api/locations`：新增收藏地點
+- `PUT /api/locations/:id`：編輯地點資訊
+- `DELETE /api/locations/:id`：刪除收藏地點
+
+### 資料結構
+```typescript
+interface SavedLocation {
+  id: string;
+  userId: string;
+  name: string;
+  address?: string;
+  mapUrl?: string;
+  imageUrl?: string; // 代表照片
+  tags?: string[];   // 例如 ['賞櫻', '購物']
+  category?: string; // 例如 '城市', '自然', '景點'
+  createdAt: string;
+  updatedAt: string;
+}
+```
+
+### UX Flow 補充
+- 登入 → 進入「我的地點」頁面 → 新增/管理收藏地點
+- 穿搭流程選擇地點時，可從收藏地點快速挑選
