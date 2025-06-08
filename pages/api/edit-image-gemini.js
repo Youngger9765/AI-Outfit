@@ -1,23 +1,24 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 import { GoogleGenAI } from '@google/genai';
-const formidable = require("formidable");
-import fs from 'fs';
+import { GoogleAuth } from 'google-auth-library';
 import path from 'path';
+const formidable = require("formidable");
+
+// 取得 service account JSON
+const credentialString = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+const credentialJson = credentialString ? JSON.parse(credentialString) : null;
+
+// GCS Storage 初始化（仍用 service account json）
 import { Storage } from '@google-cloud/storage';
+const storage = credentialJson
+  ? new Storage({ projectId: credentialJson.project_id, credentials: credentialJson })
+  : new Storage();
 
-// 寫入暫存檔案並設 GOOGLE_APPLICATION_CREDENTIALS
-if (
-  process.env.GOOGLE_SERVICE_ACCOUNT_JSON &&
-  process.env.GOOGLE_SERVICE_ACCOUNT_JSON.trim().startsWith('{')
-) {
-  const keyPath = path.resolve('.google-service-account.json');
-  fs.writeFileSync(keyPath, process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
-  process.env.GOOGLE_APPLICATION_CREDENTIALS = keyPath;
-}
-
+// GoogleGenAI 改用 API KEY 初始化
 const ai = new GoogleGenAI({
+  apiKey: process.env.GOOGLE_API_KEY,
   vertexai: true,
-  project: 'ai-outfit-462213',
+  project: credentialJson?.project_id || 'ai-outfit-462213',
   location: 'global',
 });
 const model = 'gemini-2.0-flash-preview-image-generation';
@@ -52,16 +53,14 @@ const parseForm = (req) =>
     });
   });
 
-// GCS 設定
-const bucketName = 'user_upload_photos';
-const storage = new Storage();
-
 async function uploadToGCS(localFilePath, destFileName, mimetype) {
+  const client = credentialJson ? new GoogleAuth({ credentials: credentialJson }) : null;
   await storage.bucket(bucketName).upload(localFilePath, {
     destination: destFileName,
     metadata: {
       contentType: mimetype,
     },
+    // 若有 authClient，會自動用
   });
   return `gs://${bucketName}/${destFileName}`;
 }
