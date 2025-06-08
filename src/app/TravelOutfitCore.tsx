@@ -791,7 +791,7 @@ const TravelOutfitCore = () => {
               className={`px-6 py-2 font-bold ${destinationTab === 'google' ? 'border-b-2 border-blue-500 text-blue-700' : 'text-gray-500'}`}
               onClick={() => setDestinationTab('google')}
             >
-              Google Map（敬請期待）
+              Google Map
             </button>
           </div>
           {destinationTab === 'pexels' && (
