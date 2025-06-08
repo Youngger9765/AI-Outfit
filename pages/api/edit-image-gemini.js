@@ -70,6 +70,8 @@ export default async function handler(req, res) {
     res.status(405).json({ error: 'Method not allowed' });
     return;
   }
+  // 新增：記錄所有上傳的 GCS 檔案名稱
+  let uploadedFiles = [];
   try {
     const { fields, files } = await parseForm(req);
     let prompt = fields.prompt;
@@ -115,15 +117,18 @@ export default async function handler(req, res) {
       }
     });
 
-    // 上傳到 GCS 並補上 fileUri
+    // 上傳到 GCS 並補上 fileUri，同時記錄 destFileName
     if (selfiePart) {
       selfiePart.fileData.fileUri = await uploadToGCS(selfiePart.localFilePath, selfiePart.destFileName, selfiePart.fileData.mimeType);
+      uploadedFiles.push(selfiePart.destFileName);
     }
     for (let part of clothesParts) {
       part.fileData.fileUri = await uploadToGCS(part.localFilePath, part.destFileName, part.fileData.mimeType);
+      uploadedFiles.push(part.destFileName);
     }
     if (locationPart) {
       locationPart.fileData.fileUri = await uploadToGCS(locationPart.localFilePath, locationPart.destFileName, locationPart.fileData.mimeType);
+      uploadedFiles.push(locationPart.destFileName);
     }
 
     // 組合多 part prompt
@@ -173,5 +178,12 @@ export default async function handler(req, res) {
     }
   } catch (err) {
     res.status(500).json({ error: String(err) });
+  } finally {
+    // 新增：AI 生成完畢後，刪除剛剛上傳的 GCS 檔案
+    await Promise.all(
+      uploadedFiles.map(filename =>
+        storage.bucket(bucketName).file(filename).delete().catch(() => {})
+      )
+    );
   }
 } 
