@@ -346,6 +346,7 @@ const TravelOutfitCore = () => {
     selectedPhoto: string,
     setSelectedPhoto: React.Dispatch<React.SetStateAction<string>>
   }) => {
+    const [tab, setTab] = useState<'pexels' | 'google'>('pexels');
     const [inputValue, setInputValue] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -377,84 +378,109 @@ const TravelOutfitCore = () => {
 
     return (
       <div className="max-w-2xl mx-auto">
+        {/* 共用標題區塊 */}
         <div className="text-center mb-8">
           <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-4">目的地規劃</h2>
           <p className="text-gray-600">輸入目的地，搜尋並選擇代表照片</p>
         </div>
-        {/* 一鍵帶入範例地點 */}
-        <div className="flex justify-center mb-4">
+        {/* Tab 切換列 */}
+        <div className="flex mb-6 border-b">
           <button
-            className="bg-gray-200 px-4 py-2 rounded-lg"
-            onClick={() => {
-              setResult({
-                name: '東京',
-                address: '日本東京都',
-                map_url: 'https://maps.google.com/?q=東京',
-                images: ['/tokyo.jpeg']
-              });
-              setSelectedPhoto('/tokyo.jpeg');
-            }}
+            className={`px-6 py-2 font-bold ${tab === 'pexels' ? 'border-b-2 border-purple-500 text-purple-700' : 'text-gray-500'}`}
+            onClick={() => setTab('pexels')}
           >
-            一鍵帶入範例地點
+            Pexels 圖片搜尋
+          </button>
+          <button
+            className={`px-6 py-2 font-bold ${tab === 'google' ? 'border-b-2 border-blue-500 text-blue-700' : 'text-gray-500'}`}
+            onClick={() => setTab('google')}
+          >
+            Google Map（敬請期待）
           </button>
         </div>
-        <div className="flex gap-2 mb-6">
-          <input
-            type="text"
-            className="flex-1 border border-gray-300 rounded-lg px-4 py-2"
-            placeholder="輸入目的地，例如：東京鐵塔"
-            value={inputValue}
-            onChange={e => setInputValue(e.target.value)}
-            onKeyDown={e => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                handleSearch();
-              }
-            }}
-            autoComplete="off"
-            disabled={loading}
-          />
-          <button
-            onClick={handleSearch}
-            disabled={loading || !inputValue.trim()}
-            className="bg-gradient-to-r from-pink-500 to-purple-600 text-white px-6 py-2 rounded-lg hover:shadow-lg transition-all"
-          >
-            {loading ? '搜尋中...' : '搜尋地點'}
-          </button>
-        </div>
-        {error && <div className="text-red-600 mb-4">{error}</div>}
-        {result && (
-          <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
-            <div className="mb-2">
-              <span className="font-bold">地點：</span>{result.name}
+        {/* Tab1：Pexels 圖片搜尋 */}
+        {tab === 'pexels' && (
+          <>
+            {/* 一鍵帶入範例地點 */}
+            <div className="flex justify-center mb-4">
+              <button
+                className="bg-gray-200 px-4 py-2 rounded-lg"
+                onClick={() => {
+                  setResult({
+                    name: '東京',
+                    address: '日本東京都',
+                    map_url: 'https://maps.google.com/?q=東京',
+                    images: ['/tokyo.jpeg']
+                  });
+                  setSelectedPhoto('/tokyo.jpeg');
+                }}
+              >
+                一鍵帶入範例地點
+              </button>
             </div>
-            <div className="mb-2">
-              <span className="font-bold">地址：</span>{result.address}
+            <div className="flex gap-2 mb-6">
+              <input
+                type="text"
+                className="flex-1 border border-gray-300 rounded-lg px-4 py-2"
+                placeholder="輸入目的地，例如：東京鐵塔"
+                value={inputValue}
+                onChange={e => setInputValue(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleSearch();
+                  }
+                }}
+                autoComplete="off"
+                disabled={loading}
+              />
+              <button
+                onClick={handleSearch}
+                disabled={loading || !inputValue.trim()}
+                className="bg-gradient-to-r from-pink-500 to-purple-600 text-white px-6 py-2 rounded-lg hover:shadow-lg transition-all"
+              >
+                {loading ? '搜尋中...' : '搜尋地點'}
+              </button>
             </div>
-            <div className="mb-4">
-              <a href={result.map_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">點擊查看 Google 地圖</a>
-            </div>
-            <div className="mb-4 grid grid-cols-2 md:grid-cols-3 gap-3">
-              {result.images && result.images.map((url: string, idx: number) => (
-                <div key={idx} className="relative group">
-                  <Image
-                    src={url}
-                    alt={`代表照片${idx+1}`}
-                    width={200}
-                    height={120}
-                    className={`rounded-lg cursor-pointer border-4 transition-all duration-200 ${selectedPhoto === url ? 'border-purple-500' : 'border-transparent'}`}
-                    onClick={() => setSelectedPhoto(url)}
-                    unoptimized
-                  />
-                  {selectedPhoto === url && (
-                    <div className="absolute inset-0 bg-purple-500/30 flex items-center justify-center rounded-lg pointer-events-none">
-                      <Check className="text-white" size={48} />
-                    </div>
-                  )}
+            {error && <div className="text-red-600 mb-4">{error}</div>}
+            {result && (
+              <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
+                <div className="mb-2">
+                  <span className="font-bold">地點：</span>{result.name}
                 </div>
-              ))}
-            </div>
-          </div>
+                <div className="mb-2">
+                  <span className="font-bold">地址：</span>{result.address}
+                </div>
+                <div className="mb-4">
+                  <a href={result.map_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">點擊查看 Google 地圖</a>
+                </div>
+                <div className="mb-4 grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {result.images && result.images.map((url: string, idx: number) => (
+                    <div key={idx} className="relative group">
+                      <Image
+                        src={url}
+                        alt={`代表照片${idx+1}`}
+                        width={200}
+                        height={120}
+                        className={`rounded-lg cursor-pointer border-4 transition-all duration-200 ${selectedPhoto === url ? 'border-purple-500' : 'border-transparent'}`}
+                        onClick={() => setSelectedPhoto(url)}
+                        unoptimized
+                      />
+                      {selectedPhoto === url && (
+                        <div className="absolute inset-0 bg-purple-500/30 flex items-center justify-center rounded-lg pointer-events-none">
+                          <Check className="text-white" size={48} />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+        {/* Tab2：Google Map（預留） */}
+        {tab === 'google' && (
+          <div className="text-center text-gray-400 py-16 text-xl">Google Map 功能敬請期待</div>
         )}
       </div>
     );
