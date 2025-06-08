@@ -3,7 +3,6 @@ import React, { useState, useRef } from 'react';
 import { Sparkles } from 'lucide-react';
 import ClothesUpload from '@/components/travel-outfit/ClothesUpload';
 import SelfieUpload from '@/components/travel-outfit/SelfieUpload';
-import DestinationPlanner from '@/components/travel-outfit/DestinationPlanner';
 import GeneratePrepare from '@/components/travel-outfit/GeneratePrepare';
 import GenerateResult from '@/components/travel-outfit/GenerateResult';
 import GoogleMapSearch from '@/components/travel-outfit/GoogleMapSearch';
@@ -174,6 +173,20 @@ const TravelOutfitCore = () => {
     setGeneratedContent(null);
   };
 
+  // 統一處理 setSelectedDestination，避免型別混淆
+  const handleSetSelectedDestination = (val: { name?: string; address?: string; image?: string; mapUrl?: string } | null) => {
+    setSelectedDestination(
+      val
+        ? {
+            name: val.name ?? '',
+            address: val.address ?? '',
+            image: val.image ?? '',
+            mapUrl: val.mapUrl ?? '',
+          }
+        : null
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50">
       {/* Header */}
@@ -296,11 +309,24 @@ const TravelOutfitCore = () => {
               />
             ) : (
               <PexelsSearch
-                result={destinationResult}
-                setResult={setDestinationResult}
+                result={destinationResult && destinationResult.images ? {
+                  photos: destinationResult.images.map((url, idx) => ({ src: { original: url, medium: url }, id: idx }))
+                } : null}
+                setResult={(val) => {
+                  if (val && 'photos' in val) {
+                    setDestinationResult({
+                      name: '',
+                      address: '',
+                      map_url: '',
+                      images: val.photos.map((p) => p.src.original)
+                    });
+                  } else {
+                    setDestinationResult(null);
+                  }
+                }}
                 selectedPhoto={selectedPhoto}
-                setSelectedPhoto={setSelectedPhoto}
-                setSelectedDestination={setSelectedDestination}
+                setSelectedPhoto={(photo) => setSelectedPhoto(photo ?? '')}
+                setSelectedDestination={handleSetSelectedDestination}
               />
             )
           )}

@@ -1,15 +1,19 @@
 'use client';
 import React, { useState } from 'react';
-import Image from 'next/image';
-import { Search, Check } from 'lucide-react';
 import LocationPhotoSelector from './LocationPhotoSelector';
 
+interface Photo {
+  src: { original: string; medium: string };
+  alt?: string;
+  id?: string | number;
+}
+
 interface PexelsSearchProps {
-  result: any;
-  setResult: (result: any) => void;
+  result: { photos: Photo[] } | null;
+  setResult: (result: { photos: Photo[] } | null) => void;
   selectedPhoto: string | null;
   setSelectedPhoto: (photo: string | null) => void;
-  setSelectedDestination: (destination: any) => void;
+  setSelectedDestination: (destination: { name: string; address: string; image: string; mapUrl?: string } | null) => void;
 }
 
 const PexelsSearch: React.FC<PexelsSearchProps> = ({
@@ -62,15 +66,6 @@ const PexelsSearch: React.FC<PexelsSearchProps> = ({
     }
   };
 
-  const handlePhotoClick = (photo: any) => {
-    setSelectedPhoto(photo.src.original);
-    setSelectedDestination({
-      name: inputValue,
-      address: '',
-      image: photo.src.original,
-    });
-  };
-
   return (
     <div className="space-y-6">
       {/* 搜尋輸入框 */}
@@ -117,16 +112,17 @@ const PexelsSearch: React.FC<PexelsSearchProps> = ({
         <div className="space-y-4">
           <h3 className="text-lg font-semibold text-gray-800">地點照片：</h3>
           <LocationPhotoSelector
-            photos={result.photos.map((photo: any) => ({ url: photo.src.original, alt: photo.alt, id: photo.id }))}
+            photos={result.photos.map((photo) => ({ url: photo.src.original, alt: photo.alt, id: photo.id }))}
             selectedPhoto={selectedPhoto}
             onSelect={(url) => {
               setSelectedPhoto(url);
-              const photo = result.photos.find((p: any) => p.src.original === url);
+              const photo = result.photos.find((p) => p.src.original === url);
               setSelectedDestination({
                 name: inputValue,
                 address: '',
                 image: url,
-                ...(photo ? { alt: photo.alt } : {})
+                ...(photo ? { alt: photo.alt } : {}),
+                mapUrl: '',
               });
             }}
             className="grid-cols-3"
