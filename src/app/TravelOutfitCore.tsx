@@ -8,6 +8,7 @@ import GeneratePrepare from '@/components/travel-outfit/GeneratePrepare';
 import GenerateResult from '@/components/travel-outfit/GenerateResult';
 import GoogleMapSearch from '@/components/travel-outfit/GoogleMapSearch';
 import PexelsSearch from '@/components/travel-outfit/PexelsSearch';
+import LocationPhotoSelector from '@/components/travel-outfit/LocationPhotoSelector';
 
 type UploadedCloth = {
   id: number;
@@ -67,6 +68,14 @@ const TravelOutfitCore = () => {
   const [googleMarkerPos, setGoogleMarkerPos] = useState({ lat: 35.6895, lng: 139.6917 });
   const [googleMapZoom, setGoogleMapZoom] = useState(14);
   const [googleModalPhoto, setGoogleModalPhoto] = useState<string | null>(null);
+
+  // 新增本地範例地點照片
+  const localTokyoPhotos = [
+    { url: '/tokyo.jpeg', alt: '東京範例1', id: 'tokyo' },
+    { url: '/tokyo-1.jpeg', alt: '東京範例2', id: 'tokyo-1' },
+    { url: '/tokyo-2.jpeg', alt: '東京範例3', id: 'tokyo-2' },
+  ];
+  const [useLocalTokyo, setUseLocalTokyo] = useState(false);
 
   const generateTravelContent = async () => {
     setIsGenerating(true);
@@ -225,6 +234,35 @@ const TravelOutfitCore = () => {
           <div className="text-center mb-8">
             <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-4">目的地規劃</h2>
             <p className="text-gray-600">輸入目的地，搜尋並選擇代表照片</p>
+            <div className="flex justify-center gap-4 mt-4">
+              <button
+                className="bg-gray-200 px-4 py-2 rounded-lg"
+                onClick={async () => {
+                  if (destinationTab === 'pexels') {
+                    setUseLocalTokyo(true);
+                    setDestinationResult(null);
+                    setSelectedPhoto('/tokyo.jpeg');
+                    setSelectedDestination({
+                      name: '東京範例',
+                      address: '',
+                      image: '/tokyo.jpeg',
+                      mapUrl: '',
+                    });
+                  } else if (destinationTab === 'google') {
+                    setGoogleSearchInput('東京鐵塔');
+                    setTimeout(() => {
+                      const input = document.querySelector('input[placeholder^="搜尋地點"]') as HTMLInputElement;
+                      if (input) {
+                        const event = new KeyboardEvent('keydown', { key: 'Enter' });
+                        input.dispatchEvent(event);
+                      }
+                    }, 100);
+                  }
+                }}
+              >
+                一鍵帶入範例：東京本地照片
+              </button>
+            </div>
           </div>
           <div className="flex mb-6 border-b">
             <button
@@ -241,13 +279,30 @@ const TravelOutfitCore = () => {
             </button>
           </div>
           {destinationTab === 'pexels' && (
-            <PexelsSearch
-              result={destinationResult}
-              setResult={setDestinationResult}
-              selectedPhoto={selectedPhoto}
-              setSelectedPhoto={setSelectedPhoto}
-              setSelectedDestination={setSelectedDestination}
-            />
+            useLocalTokyo ? (
+              <LocationPhotoSelector
+                photos={localTokyoPhotos}
+                selectedPhoto={selectedPhoto}
+                onSelect={(url) => {
+                  setSelectedPhoto(url);
+                  setSelectedDestination({
+                    name: '東京範例',
+                    address: '',
+                    image: url,
+                    mapUrl: '',
+                  });
+                }}
+                className="grid-cols-3"
+              />
+            ) : (
+              <PexelsSearch
+                result={destinationResult}
+                setResult={setDestinationResult}
+                selectedPhoto={selectedPhoto}
+                setSelectedPhoto={setSelectedPhoto}
+                setSelectedDestination={setSelectedDestination}
+              />
+            )
           )}
           {destinationTab === 'google' && (
             <GoogleMapSearch
