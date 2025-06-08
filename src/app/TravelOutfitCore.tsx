@@ -907,6 +907,7 @@ const GoogleMapSearch = ({
   setGoogleModalPhoto,
   setSelectedDestination
 }: GoogleMapSearchProps) => {
+  // 修正 hooks 規則，mapRef 一律在頂層宣告
   const mapRef = useRef<google.maps.Map | null>(null);
 
   // 添加 Google Maps API 載入檢查
