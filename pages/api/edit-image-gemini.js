@@ -128,11 +128,11 @@ export default async function handler(req, res) {
     const promptParts = [];
     if (selfiePart) {
       const selfieBuffer = fs.readFileSync(selfiePart.localFilePath);
-      promptParts.push({ text: '這是使用者的自拍照，請用這張臉和身形作為主角：' });
+      promptParts.push({ text: "This is the user's selfie. Please use this face and body as the main subject:" });
       promptParts.push({ inlineData: { data: selfieBuffer.toString('base64'), mimeType: selfiePart.fileData.mimeType } });
     }
     if (clothesParts.length > 0) {
-      promptParts.push({ text: '以下是使用者想要穿搭的衣服與配件照片，請將這些單品自然地穿在主角身上：' });
+      promptParts.push({ text: "These are the clothes and accessories the user wants to wear. Please dress the main subject naturally with these items:" });
       for (let part of clothesParts) {
         const clothBuffer = fs.readFileSync(part.localFilePath);
         promptParts.push({ inlineData: { data: clothBuffer.toString('base64'), mimeType: part.fileData.mimeType } });
@@ -140,10 +140,16 @@ export default async function handler(req, res) {
     }
     if (locationPart) {
       const locationBuffer = fs.readFileSync(locationPart.localFilePath);
-      promptParts.push({ text: '這是旅遊地點的代表照片，請將主角自然地合成在這個場景中：' });
+      promptParts.push({ text: "This is a representative photo of the travel destination. Please naturally composite the main subject into this scene:" });
       promptParts.push({ inlineData: { data: locationBuffer.toString('base64'), mimeType: locationPart.fileData.mimeType } });
     }
-    promptParts.push({ text: `\n請根據上述素材，生成一張真實感強、全身入鏡（頭到腳）、主角居中、光影自然、比例正確的合成照片。主角要穿上所有指定的衣服與配件，並自然地融入地點背景，整體風格要像真實拍攝的旅遊穿搭照。` });
+    promptParts.push({ text: `
+Combine the provided face and outfit onto a realistic human figure and place them naturally at the given location. 
+Make sure the composition shows the full body (head to feet) clearly, centered in the frame, with natural proportions and lighting that matches the background. 
+The final image should look like an authentic scene at this location.
+${clothesParts.length > 0 ? `The outfit includes: ${clothesParts.map(c => path.basename(c.localFilePath)).join(', ')}.` : ''}
+Location: ${locationPart ? path.basename(locationPart.localFilePath) : 'the destination'}.
+` });
 
     // Debug log: 檢查 promptParts
     console.log('promptParts:', promptParts);
