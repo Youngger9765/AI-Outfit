@@ -1,5 +1,5 @@
 export async function POST(req) {
-  const { location_name } = await req.json();
+  const { query } = await req.json();
 
   // Debug log: 印出金鑰有無
   console.log('PEXELS_API_KEY:', process.env.PEXELS_API_KEY ? '[存在]' : '[不存在]');
@@ -10,7 +10,7 @@ export async function POST(req) {
   }
 
   // 呼叫 Pexels API 搜尋地點照片
-  const url = `https://api.pexels.com/v1/search?query=${encodeURIComponent(location_name)}&per_page=6`;
+  const url = `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=6`;
   const res = await fetch(url, {
     headers: {
       Authorization: apiKey
@@ -24,12 +24,5 @@ export async function POST(req) {
   }
 
   const data = await res.json();
-  const images = (data.photos || []).map(photo => photo.src.large);
-
-  return Response.json({
-    name: location_name,
-    address: '查無地址', // 如需真實地址可再串 Google Maps API
-    map_url: `https://www.google.com/maps/search/${encodeURIComponent(location_name)}`,
-    images
-  });
+  return Response.json(data);
 } 

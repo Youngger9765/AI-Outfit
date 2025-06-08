@@ -7,6 +7,7 @@ import DestinationPlanner from '@/components/travel-outfit/DestinationPlanner';
 import GeneratePrepare from '@/components/travel-outfit/GeneratePrepare';
 import GenerateResult from '@/components/travel-outfit/GenerateResult';
 import GoogleMapSearch from '@/components/travel-outfit/GoogleMapSearch';
+import PexelsSearch from '@/components/travel-outfit/PexelsSearch';
 
 type UploadedCloth = {
   id: number;
@@ -240,7 +241,7 @@ const TravelOutfitCore = () => {
             </button>
           </div>
           {destinationTab === 'pexels' && (
-            <DestinationPlanner
+            <PexelsSearch
               result={destinationResult}
               setResult={setDestinationResult}
               selectedPhoto={selectedPhoto}
