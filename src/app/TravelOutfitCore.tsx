@@ -12,7 +12,7 @@ import {
   Check
 } from 'lucide-react';
 import Image from 'next/image';
-import { GoogleMap, Marker } from '@react-google-maps/api';
+import { GoogleMap, Marker, useLoadScript } from '@react-google-maps/api';
 
 type UploadedCloth = {
   id: number;
@@ -908,6 +908,24 @@ const GoogleMapSearch = ({
   setSelectedDestination
 }: GoogleMapSearchProps) => {
   const mapRef = useRef<google.maps.Map | null>(null);
+
+  // 添加 Google Maps API 載入檢查
+  const { isLoaded, loadError } = useLoadScript({
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+    libraries: ['places']
+  });
+
+  if (loadError) {
+    return <div className="text-red-600">Google Maps 載入失敗，請稍後再試</div>;
+  }
+
+  if (!isLoaded) {
+    return (
+      <div className="flex items-center justify-center h-[400px]">
+        <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   const handleSearchLocation = async () => {
     if (!googleSearchInput.trim()) return;
