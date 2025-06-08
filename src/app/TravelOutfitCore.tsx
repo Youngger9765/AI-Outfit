@@ -1080,16 +1080,16 @@ const GoogleMapSearch = ({
         </div>
       )}
       {/* 地點照片選擇區塊 */}
-      <div className="w-full max-w-2xl mt-2">
+      <div className="w-full mt-2 mx-auto">
         <div className="font-semibold mb-2">地點照片：</div>
         {googlePlacePhotos.length > 0 ? (
-          <div className="flex flex-wrap gap-4 pb-2">
+          <div className="grid grid-cols-3 gap-4 pb-2">
             {googlePlacePhotos.map((url, idx) => (
               <div key={url} className="relative group">
                 <img
                   src={url}
                   alt={`地點照片${idx + 1}`}
-                  className={`w-40 h-40 object-contain bg-white rounded-lg border-2 transition-all cursor-pointer duration-200 hover:shadow-xl ${googleSelectedPhoto === url ? 'border-blue-500 ring-2 ring-blue-400' : 'border-gray-200'}`}
+                  className={`w-full h-32 object-cover bg-white rounded-lg border-2 transition-all cursor-pointer duration-200 hover:shadow-xl ${googleSelectedPhoto === url ? 'border-blue-500 ring-2 ring-blue-400' : 'border-gray-200'}`}
                   onClick={() => setGoogleModalPhoto(url)}
                   onDoubleClick={() => {
                     setGoogleSelectedPhoto(url);
@@ -1125,20 +1125,20 @@ const GoogleMapSearch = ({
         ) : (
           <div className="text-gray-400">查無地點照片</div>
         )}
-        {/* Modal 放大圖 */}
-        {googleModalPhoto && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setGoogleModalPhoto(null)}>
-            <img src={googleModalPhoto} alt="放大地點照片" className="max-w-3xl max-h-[80vh] rounded-lg shadow-2xl border-4 border-white" />
-          </div>
-        )}
-        {/* 代表照大圖 */}
-        {googleSelectedPhoto && (
-          <div className="mt-6 flex flex-col items-center">
-            <div className="font-semibold mb-2 text-blue-700">已選擇代表照片</div>
-            <img src={googleSelectedPhoto} alt="代表照片" className="max-w-md max-h-96 rounded-xl border-4 border-blue-400 shadow-lg" />
-          </div>
-        )}
       </div>
+      {/* Modal 放大圖 */}
+      {googleModalPhoto && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setGoogleModalPhoto(null)}>
+          <img src={googleModalPhoto} alt="放大地點照片" className="max-w-3xl max-h-[80vh] rounded-lg shadow-2xl border-4 border-white" />
+        </div>
+      )}
+      {/* 代表照大圖 */}
+      {googleSelectedPhoto && (
+        <div className="mt-6 flex flex-col items-center">
+          <div className="font-semibold mb-2 text-blue-700">已選擇代表照片</div>
+          <img src={googleSelectedPhoto} alt="代表照片" className="max-w-md max-h-96 rounded-xl border-4 border-blue-400 shadow-lg" />
+        </div>
+      )}
     </>
   );
 };
