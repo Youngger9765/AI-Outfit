@@ -146,10 +146,7 @@ export default async function handler(req, res) {
     promptParts.push({ text: `
 Combine the provided face and outfit onto a realistic human figure and place them naturally at the given location. 
 Make sure the composition shows the full body (head to feet) clearly, centered in the frame, with natural proportions and lighting that matches the background. 
-The final image should look like an authentic scene at this location.
-${clothesParts.length > 0 ? `The outfit includes: ${clothesParts.map(c => path.basename(c.localFilePath)).join(', ')}.` : ''}
-Location: ${locationPart ? path.basename(locationPart.localFilePath) : 'the destination'}.
-` });
+The final image should look like an authentic scene at this location.` });
 
     // Debug log: 檢查 promptParts
     console.log('promptParts:', promptParts);
