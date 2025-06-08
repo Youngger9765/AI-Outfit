@@ -486,7 +486,15 @@ const TravelOutfitCore = () => {
                         width={200}
                         height={120}
                         className={`rounded-lg cursor-pointer border-4 transition-all duration-200 ${selectedPhoto === url ? 'border-purple-500' : 'border-transparent'}`}
-                        onClick={() => setSelectedPhoto(url)}
+                        onClick={() => {
+                          setSelectedPhoto(url);
+                          setSelectedDestination({
+                            name: result.name,
+                            address: result.address,
+                            mapUrl: result.map_url,
+                            image: url
+                          });
+                        }}
                         unoptimized
                       />
                       {selectedPhoto === url && (
