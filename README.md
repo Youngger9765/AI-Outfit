@@ -635,3 +635,65 @@ AI-Outfit/
 > Google Maps/Places API 有每月 $200 免費額度，OpenAI/Gemini 圖像生成依實際 API 價格計算。
 
 ---
+
+## 數位衣櫥（Digital Wardrobe）功能規劃
+
+- 每位用戶擁有專屬雲端衣櫥，可永久儲存上傳的衣物照片
+- 支援自訂分類（上衣、下身、外套、配件、鞋子等）
+- 衣物可標記顏色、材質、季節、品牌等屬性
+- 提供 CRUD 與分類管理介面
+- 可直接將衣櫥內衣物加入穿搭生成流程
+
+### API 規劃
+- `GET /api/wardrobe`：取得使用者所有衣物
+- `POST /api/wardrobe`：新增衣物
+- `PUT /api/wardrobe/:id`：編輯衣物
+- `DELETE /api/wardrobe/:id`：刪除衣物
+- `GET /api/wardrobe/categories`：取得所有分類
+
+### 資料結構
+```typescript
+interface WardrobeItem {
+  id: string;
+  userId: string;
+  imageUrl: string;
+  name: string;
+  category: string; // 上衣、下身、外套、配件、鞋子...
+  color?: string;
+  material?: string;
+  season?: string;
+  brand?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+```
+
+## 自拍照儲存功能
+
+- 每位用戶可儲存多張自拍照（全身、半身、不同造型等）
+- 自拍照可命名、標記（如：正面、側臉、長髮、短髮、淡妝、濃妝等）
+- 自拍照與衣物一樣存於雲端 Storage，屬性存於資料庫
+- 穿搭流程可直接從自拍庫選擇要用的自拍照
+
+### API 規劃
+- `GET /api/selfies`：取得使用者所有自拍照
+- `POST /api/selfies`：新增自拍照
+- `PUT /api/selfies/:id`：編輯自拍照屬性
+- `DELETE /api/selfies/:id`：刪除自拍照
+
+### 資料結構
+```typescript
+interface SelfieItem {
+  id: string;
+  userId: string;
+  imageUrl: string;
+  name: string;
+  tags?: string[]; // 例如 ['正面', '長髮', '淡妝']
+  createdAt: string;
+  updatedAt: string;
+}
+```
+
+### UX Flow 補充
+- 登入 → 進入「自拍庫」頁面 → 上傳/管理自拍照
+- 穿搭流程選擇自拍時，可從自拍庫挑選
