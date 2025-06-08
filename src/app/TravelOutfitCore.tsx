@@ -809,12 +809,19 @@ const GoogleMapSearch = () => {
   const [searchInput, setSearchInput] = useState('');
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState('');
+  const [placePhotos, setPlacePhotos] = useState<string[]>([]); // 照片網址陣列
+  const [selectedPhoto, setSelectedPhoto] = useState<string>('');
+  const [placeInfo, setPlaceInfo] = useState<{ name: string; address: string; url: string } | null>(null);
+  const [modalPhoto, setModalPhoto] = useState<string | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
 
   const handleSearchLocation = async () => {
     if (!searchInput.trim()) return;
     setSearchLoading(true);
     setSearchError('');
+    setPlacePhotos([]);
+    setSelectedPhoto('');
+    setPlaceInfo(null);
     try {
       const res = await fetch(
         `https://places.googleapis.com/v1/places:searchText?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`,
@@ -837,6 +844,22 @@ const GoogleMapSearch = () => {
         setMarkerPos({ lat: loc.latitude, lng: loc.longitude });
         setMapCenter({ lat: loc.latitude, lng: loc.longitude });
         setMapZoom(16);
+        // 地點資訊
+        setPlaceInfo({
+          name: data.places[0].displayName?.text || '',
+          address: data.places[0].formattedAddress || '',
+          url: data.places[0].googleMapsUri || ''
+        });
+        // 取得地點照片
+        if (data.places[0].photos && data.places[0].photos.length > 0) {
+          const photos = data.places[0].photos;
+          const photoUrls = photos.map((photo: any) =>
+            `https://places.googleapis.com/v1/${photo.name}/media?maxWidthPx=600&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`
+          );
+          setPlacePhotos(photoUrls);
+        } else {
+          setPlacePhotos([]);
+        }
       } else {
         setSearchError('查無此地點，請嘗試其他關鍵字');
       }
@@ -844,6 +867,47 @@ const GoogleMapSearch = () => {
       setSearchError('搜尋失敗，請稍後再試');
     }
     setSearchLoading(false);
+  };
+
+  const handleMapClick = async (e: google.maps.MapMouseEvent) => {
+    const placeId = (e as any).placeId;
+    if (placeId) {
+      (e as any).stop && (e as any).stop();
+      setSearchInput('');
+      setSearchError('');
+      setPlacePhotos([]);
+      setSelectedPhoto('');
+      setPlaceInfo(null);
+      try {
+        const res = await fetch(
+          `https://places.googleapis.com/v1/places/${placeId}?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`,
+          {
+            headers: { 'X-Goog-FieldMask': '*' }
+          }
+        );
+        const data = await res.json();
+        if (data.location) {
+          setMarkerPos({ lat: data.location.latitude, lng: data.location.longitude });
+          setMapCenter({ lat: data.location.latitude, lng: data.location.longitude });
+          setMapZoom(16);
+        }
+        setPlaceInfo({
+          name: data.displayName?.text || '',
+          address: data.formattedAddress || '',
+          url: data.googleMapsUri || ''
+        });
+        if (data.photos && data.photos.length > 0) {
+          const photoUrls = data.photos.map((photo: any) =>
+            `https://places.googleapis.com/v1/${photo.name}/media?maxWidthPx=600&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`
+          );
+          setPlacePhotos(photoUrls);
+        } else {
+          setPlacePhotos([]);
+        }
+      } catch {
+        setSearchError('取得地點資訊失敗，請稍後再試');
+      }
+    }
   };
 
   return (
@@ -884,10 +948,60 @@ const GoogleMapSearch = () => {
           fullscreenControl: true
         }}
         onLoad={map => { mapRef.current = map; }}
+        onClick={handleMapClick}
       >
         <Marker position={markerPos} />
       </GoogleMap>
       <div className="mt-4 text-gray-600 text-sm">目前座標：{markerPos.lat.toFixed(5)}, {markerPos.lng.toFixed(5)}</div>
+      {/* 地點資訊卡片 */}
+      {placeInfo && (
+        <div className="w-full max-w-2xl bg-gray-50 rounded-lg shadow p-4 mb-4">
+          <div className="font-bold text-lg mb-1">{placeInfo.name}</div>
+          <div className="text-gray-700 mb-1">{placeInfo.address}</div>
+          {placeInfo.url && (
+            <a href={placeInfo.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline text-sm">在 Google Maps 上查看</a>
+          )}
+        </div>
+      )}
+      {/* 地點照片選擇區塊 */}
+      <div className="w-full max-w-2xl mt-2">
+        <div className="font-semibold mb-2">地點照片：</div>
+        {placePhotos.length > 0 ? (
+          <div className="flex flex-wrap gap-4 pb-2">
+            {placePhotos.map((url, idx) => (
+              <div key={url} className="relative group">
+                <img
+                  src={url}
+                  alt={`地點照片${idx + 1}`}
+                  className={`w-40 h-40 object-contain bg-white rounded-lg border-2 transition-all cursor-pointer duration-200 hover:shadow-xl ${selectedPhoto === url ? 'border-blue-500 ring-2 ring-blue-400' : 'border-gray-200'}`}
+                  onClick={() => setModalPhoto(url)}
+                  onDoubleClick={() => setSelectedPhoto(url)}
+                  title="點擊放大，雙擊選擇代表照"
+                />
+                <button
+                  className={`absolute top-1 right-1 px-2 py-0.5 text-xs rounded bg-white/80 border ${selectedPhoto === url ? 'border-blue-500 text-blue-600 font-bold' : 'border-gray-300 text-gray-600'} shadow`}
+                  onClick={e => { e.stopPropagation(); setSelectedPhoto(url); }}
+                >{selectedPhoto === url ? '已選擇' : '選擇'}</button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-gray-400">查無地點照片</div>
+        )}
+        {/* Modal 放大圖 */}
+        {modalPhoto && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setModalPhoto(null)}>
+            <img src={modalPhoto} alt="放大地點照片" className="max-w-3xl max-h-[80vh] rounded-lg shadow-2xl border-4 border-white" />
+          </div>
+        )}
+        {/* 代表照大圖 */}
+        {selectedPhoto && (
+          <div className="mt-6 flex flex-col items-center">
+            <div className="font-semibold mb-2 text-blue-700">已選擇代表照片</div>
+            <img src={selectedPhoto} alt="代表照片" className="max-w-md max-h-96 rounded-xl border-4 border-blue-400 shadow-lg" />
+          </div>
+        )}
+      </div>
     </>
   );
 };
