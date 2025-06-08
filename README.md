@@ -473,3 +473,138 @@ const generatedContent = {
 - 修正 SSR/CSR 環境下 Google Maps API 載入問題，確保 Vercel 部署與本地開發皆可正常顯示地圖。
 - 解決 Google Maps API 金鑰 Referer 授權問題，確保雲端預覽網址可正常使用。
 - 優化地點照片排版，支援一行三張、寬度自動對齊。
+
+## 專案目錄結構
+
+```
+AI-Outfit/
+├── public/                  # 靜態資源（範例地點照片等）
+├── src/
+│   ├── app/                 # Next.js App Router 入口
+│   │   └── TravelOutfitCore.tsx  # 主流程元件
+│   ├── components/
+│   │   └── travel-outfit/   # 旅行穿搭相關元件
+│   │       ├── ClothesUpload.tsx         # 衣服上傳與預覽
+│   │       ├── SelfieUpload.tsx          # 自拍照上傳
+│   │       ├── PexelsSearch.tsx          # Pexels 圖片搜尋
+│   │       ├── GoogleMapSearch.tsx       # Google 地圖與地點照片搜尋
+│   │       ├── LocationPhotoSelector.tsx # 共用地點照片選擇區塊
+│   │       ├── GeneratePrepare.tsx       # 生成前確認與 AI 服務選擇
+│   │       └── GenerateResult.tsx        # 顯示 AI 生成結果
+│   └── ...
+├── pages/api/               # API 路由
+│   └── search_location_photos/           # Pexels 圖片搜尋 API
+├── next.config.js           # Next.js 設定
+├── tailwind.config.js       # Tailwind 設定
+├── tsconfig.json            # TypeScript 設定
+└── README.md                # 產品說明文件
+```
+
+## 主要元件說明
+
+- `ClothesUpload.tsx`：衣服上傳與預覽
+- `SelfieUpload.tsx`：自拍照上傳
+- `PexelsSearch.tsx`：Pexels 圖片搜尋
+- `GoogleMapSearch.tsx`：Google 地圖與地點照片搜尋
+- `LocationPhotoSelector.tsx`：共用地點照片選擇區塊
+- `GeneratePrepare.tsx`：生成前確認與 AI 服務選擇
+- `GenerateResult.tsx`：顯示 AI 生成結果
+- `TravelOutfitCore.tsx`：主流程元件，整合所有步驟
+
+## 本地開發與部署
+
+1. 安裝依賴：
+   ```bash
+   npm install
+   # 或 yarn
+   ```
+2. 啟動開發伺服器：
+   ```bash
+   npm run dev
+   # 或 yarn dev
+   ```
+3. 設定環境變數（如需串接 Pexels、Google Maps、AI 服務等）：
+   - `.env.local` 需包含：
+     - `PEXELS_API_KEY`
+     - `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`
+     - `GOOGLE_GENAI_API_KEY`（如需 Gemini 生成）
+
+4. 部署到 Vercel 時，請於 Vercel 專案設定環境變數。
+
+## API 文件
+
+### 1. Pexels 圖片搜尋 API
+- 路徑：`/api/search_location_photos`
+- 方法：`POST`
+- 請求參數：
+  ```json
+  {
+    "query": "東京鐵塔"
+  }
+  ```
+- 回應格式（Pexels 原生格式）：
+  ```json
+  {
+    "photos": [
+      {
+        "id": 123,
+        "src": {
+          "original": "https://images.pexels.com/xxx.jpg",
+          "medium": "https://images.pexels.com/xxx-medium.jpg"
+        },
+        "alt": "Tokyo Tower"
+      },
+      ...
+    ]
+  }
+  ```
+- 用途：供 PexelsSearch 元件搜尋地點代表照片。
+
+### 2. Google Map 地點搜尋（前端直連 Google API）
+- 路徑：Google 官方 API
+- 用於 `GoogleMapSearch.tsx`，需設定 `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`。
+- 支援地點搜尋、地點照片取得。
+
+---
+
+## 資料流簡介
+
+1. **衣服/自拍上傳**
+   使用者上傳圖片，前端用 FileReader 預覽，資料暫存於 state。
+2. **目的地搜尋**
+   - Pexels tab：呼叫 `/api/search_location_photos`，取得圖片列表。
+   - Google tab：前端直連 Google Places API，取得地點資訊與照片。
+3. **地點代表照片選擇**
+   使用 `LocationPhotoSelector` 元件，選定後將圖片資訊存入 `selectedDestination`。
+4. **AI 生成**
+   前端組合所有資料，送到 `/api/edit-image` 或 `/api/edit-image-gemini`，取得生成結果。
+
+---
+
+## 如何開啟本地 Server
+
+1. 安裝依賴：
+   ```bash
+   npm install
+   # 或 yarn
+   ```
+2. 設定環境變數：
+   - 在專案根目錄建立 `.env.local`，內容範例：
+     ```
+     PEXELS_API_KEY=你的Pexels金鑰
+     NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=你的Google Maps金鑰
+     GOOGLE_GENAI_API_KEY=你的Gemini金鑰（如需AI生成功能）
+     ```
+3. 啟動開發伺服器：
+   ```bash
+   npm run dev
+   # 或 yarn dev
+   ```
+   - 預設會在 http://localhost:3000 開啟
+4. （選用）啟動 production server：
+   ```bash
+   npm run build
+   npm start
+   ```
+
+---
