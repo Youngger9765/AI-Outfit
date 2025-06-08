@@ -2,6 +2,7 @@
 import { GoogleGenAI } from '@google/genai';
 import path from 'path';
 const formidable = require("formidable");
+import fs from 'fs';
 
 // 取得 service account JSON
 const credentialString = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
@@ -13,12 +14,9 @@ const storage = credentialJson
   ? new Storage({ projectId: credentialJson.project_id, credentials: credentialJson })
   : new Storage();
 
-// GoogleGenAI 改用 API KEY 初始化
+// GoogleGenAI 改用 API KEY 初始化（不能同時傳 project/location）
 const ai = new GoogleGenAI({
   apiKey: process.env.GOOGLE_API_KEY,
-  vertexai: true,
-  project: credentialJson?.project_id || 'ai-outfit-462213',
-  location: 'global',
 });
 const model = 'gemini-2.0-flash-preview-image-generation';
 
@@ -31,11 +29,7 @@ const generationConfig = {
     { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'OFF' },
     { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'OFF' },
     { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'OFF' },
-    { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'OFF' },
-    { category: 'HARM_CATEGORY_IMAGE_HATE', threshold: 'OFF' },
-    { category: 'HARM_CATEGORY_IMAGE_DANGEROUS_CONTENT', threshold: 'OFF' },
-    { category: 'HARM_CATEGORY_IMAGE_HARASSMENT', threshold: 'OFF' },
-    { category: 'HARM_CATEGORY_IMAGE_SEXUALLY_EXPLICIT', threshold: 'OFF' },
+    { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'OFF' }
   ],
 };
 
@@ -70,7 +64,6 @@ export default async function handler(req, res) {
     res.status(405).json({ error: 'Method not allowed' });
     return;
   }
-  // 新增：記錄所有上傳的 GCS 檔案名稱
   let uploadedFiles = [];
   try {
     const { fields, files } = await parseForm(req);
@@ -131,21 +124,24 @@ export default async function handler(req, res) {
       uploadedFiles.push(locationPart.destFileName);
     }
 
-    // 組合多 part prompt
+    // 組合多 part prompt，改為 base64 inlineData
     const promptParts = [];
     if (selfiePart) {
+      const selfieBuffer = fs.readFileSync(selfiePart.localFilePath);
       promptParts.push({ text: '這是使用者的自拍照，請用這張臉和身形作為主角：' });
-      promptParts.push({ fileData: selfiePart.fileData });
+      promptParts.push({ inlineData: { data: selfieBuffer.toString('base64'), mimeType: selfiePart.fileData.mimeType } });
     }
     if (clothesParts.length > 0) {
       promptParts.push({ text: '以下是使用者想要穿搭的衣服與配件照片，請將這些單品自然地穿在主角身上：' });
       for (let part of clothesParts) {
-        promptParts.push({ fileData: part.fileData });
+        const clothBuffer = fs.readFileSync(part.localFilePath);
+        promptParts.push({ inlineData: { data: clothBuffer.toString('base64'), mimeType: part.fileData.mimeType } });
       }
     }
     if (locationPart) {
+      const locationBuffer = fs.readFileSync(locationPart.localFilePath);
       promptParts.push({ text: '這是旅遊地點的代表照片，請將主角自然地合成在這個場景中：' });
-      promptParts.push({ fileData: locationPart.fileData });
+      promptParts.push({ inlineData: { data: locationBuffer.toString('base64'), mimeType: locationPart.fileData.mimeType } });
     }
     promptParts.push({ text: `\n請根據上述素材，生成一張真實感強、全身入鏡（頭到腳）、主角居中、光影自然、比例正確的合成照片。主角要穿上所有指定的衣服與配件，並自然地融入地點背景，整體風格要像真實拍攝的旅遊穿搭照。` });
 
@@ -161,15 +157,14 @@ export default async function handler(req, res) {
       config: generationConfig,
     };
 
-    const streamingResp = await ai.models.generateContentStream(reqBody);
+    // 改用 generateContent（非串流）
+    const response = await ai.models.generateContent(reqBody);
     let imageBase64 = '';
-    for await (const chunk of streamingResp) {
-      if (chunk.candidates && chunk.candidates[0].content.parts) {
-        const imgPart = chunk.candidates[0].content.parts.find(
-          (p) => p.inlineData && p.inlineData.mimeType && p.inlineData.mimeType.startsWith('image/')
-        );
-        if (imgPart) imageBase64 = imgPart.inlineData.data;
-      }
+    if (response.candidates && response.candidates[0].content.parts) {
+      const imgPart = response.candidates[0].content.parts.find(
+        (p) => p.inlineData && p.inlineData.mimeType && p.inlineData.mimeType.startsWith('image/')
+      );
+      if (imgPart) imageBase64 = imgPart.inlineData.data;
     }
     if (imageBase64) {
       res.status(200).json({ imageBase64 });
