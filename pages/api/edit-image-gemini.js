@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 import { GoogleGenAI } from '@google/genai';
-import { GoogleAuth } from 'google-auth-library';
 import path from 'path';
 const formidable = require("formidable");
 
@@ -53,14 +52,15 @@ const parseForm = (req) =>
     });
   });
 
+// GCS 設定
+const bucketName = 'user_upload_photos';
+
 async function uploadToGCS(localFilePath, destFileName, mimetype) {
-  const client = credentialJson ? new GoogleAuth({ credentials: credentialJson }) : null;
   await storage.bucket(bucketName).upload(localFilePath, {
     destination: destFileName,
     metadata: {
       contentType: mimetype,
     },
-    // 若有 authClient，會自動用
   });
   return `gs://${bucketName}/${destFileName}`;
 }
