@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
 import { Search, Check } from 'lucide-react';
+import LocationPhotoSelector from './LocationPhotoSelector';
 
 interface PexelsSearchProps {
   result: any;
@@ -114,28 +115,22 @@ const PexelsSearch: React.FC<PexelsSearchProps> = ({
       {/* 搜尋結果 */}
       {result && result.photos && (
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-gray-800">搜尋結果</h3>
-          <div className="grid grid-cols-2 gap-4">
-            {result.photos.map((photo: any) => (
-              <div
-                key={photo.id}
-                className="relative aspect-square rounded-lg overflow-hidden cursor-pointer group"
-                onClick={() => handlePhotoClick(photo)}
-              >
-                <Image
-                  src={photo.src.medium}
-                  alt={photo.alt || '目的地照片'}
-                  fill
-                  className="object-cover transition-transform group-hover:scale-105"
-                />
-                {selectedPhoto === photo.src.original && (
-                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                    <Check className="text-white" size={32} />
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
+          <h3 className="text-lg font-semibold text-gray-800">地點照片：</h3>
+          <LocationPhotoSelector
+            photos={result.photos.map((photo: any) => ({ url: photo.src.original, alt: photo.alt, id: photo.id }))}
+            selectedPhoto={selectedPhoto}
+            onSelect={(url) => {
+              setSelectedPhoto(url);
+              const photo = result.photos.find((p: any) => p.src.original === url);
+              setSelectedDestination({
+                name: inputValue,
+                address: '',
+                image: url,
+                ...(photo ? { alt: photo.alt } : {})
+              });
+            }}
+            className="grid-cols-3"
+          />
         </div>
       )}
     </div>

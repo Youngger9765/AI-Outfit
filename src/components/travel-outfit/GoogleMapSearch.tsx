@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
 import { GoogleMap, Marker, useLoadScript } from '@react-google-maps/api';
+import LocationPhotoSelector from './LocationPhotoSelector';
 
 // 添加 Google Places API 的類型定義
 interface GooglePlacePhoto {
@@ -251,45 +252,22 @@ const GoogleMapSearch: React.FC<GoogleMapSearchProps> = ({
       <div className="w-full mt-2 mx-auto">
         <div className="font-semibold mb-2">地點照片：</div>
         {googlePlacePhotos.length > 0 ? (
-          <div className="grid grid-cols-3 gap-4 pb-2">
-            {googlePlacePhotos.map((url, idx) => (
-              <div key={url} className="relative group">
-                <img
-                  src={url}
-                  alt={`地點照片${idx + 1}`}
-                  className={`w-full h-32 object-cover bg-white rounded-lg border-2 transition-all cursor-pointer duration-200 hover:shadow-xl ${googleSelectedPhoto === url ? 'border-blue-500 ring-2 ring-blue-400' : 'border-gray-200'}`}
-                  onClick={() => setGoogleModalPhoto(url)}
-                  onDoubleClick={() => {
-                    setGoogleSelectedPhoto(url);
-                    if (googlePlaceInfo) {
-                      setSelectedDestination({
-                        name: googlePlaceInfo.name,
-                        address: googlePlaceInfo.address,
-                        mapUrl: googlePlaceInfo.url,
-                        image: url
-                      });
-                    }
-                  }}
-                  title="點擊放大，雙擊選擇代表照"
-                />
-                <button
-                  className={`absolute top-1 right-1 px-2 py-0.5 text-xs rounded bg-white/80 border ${googleSelectedPhoto === url ? 'border-blue-500 text-blue-600 font-bold' : 'border-gray-300 text-gray-600'} shadow`}
-                  onClick={e => {
-                    e.stopPropagation();
-                    setGoogleSelectedPhoto(url);
-                    if (googlePlaceInfo) {
-                      setSelectedDestination({
-                        name: googlePlaceInfo.name,
-                        address: googlePlaceInfo.address,
-                        mapUrl: googlePlaceInfo.url,
-                        image: url
-                      });
-                    }
-                  }}
-                >{googleSelectedPhoto === url ? '已選擇' : '選擇'}</button>
-              </div>
-            ))}
-          </div>
+          <LocationPhotoSelector
+            photos={googlePlacePhotos.map((url, idx) => ({ url, id: idx }))}
+            selectedPhoto={googleSelectedPhoto}
+            onSelect={(url) => {
+              setGoogleSelectedPhoto(url);
+              if (googlePlaceInfo) {
+                setSelectedDestination({
+                  name: googlePlaceInfo.name,
+                  address: googlePlaceInfo.address,
+                  mapUrl: googlePlaceInfo.url,
+                  image: url
+                });
+              }
+            }}
+            className="grid-cols-3"
+          />
         ) : (
           <div className="text-gray-400">查無地點照片</div>
         )}
