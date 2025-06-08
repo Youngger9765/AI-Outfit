@@ -608,3 +608,30 @@ AI-Outfit/
    ```
 
 ---
+
+## 成本計算與 API 使用說明
+
+### UX Flow 會用到的 API
+
+| 步驟         | 主要 API                        | 用途說明                       |
+|--------------|-------------------------------|-------------------------------|
+| 衣服/自拍上傳 | 無（本地處理）                  | 前端 FileReader 預覽           |
+| 目的地搜尋   | 1. `/api/search_location_photos`<br>2. Google Places API | 1. Pexels 圖片搜尋<br>2. Google 地點/照片搜尋 |
+| AI 生成      | 1. `/api/edit-image`<br>2. `/api/edit-image-gemini` | 1. OpenAI 圖像生成<br>2. Google Gemini 圖像生成 |
+
+#### 每次完整 UX 流程會呼叫的 API 數量
+- Pexels tab：1 次 Pexels API + 1 次 AI 生成 API
+- Google tab：1~2 次 Google Places API + 1 次 AI 生成 API
+
+### API 成本估算
+
+| 流程         | API 請求數 | 預估成本 (USD)         |
+|--------------|-----------|------------------------|
+| Pexels + OpenAI | 1 + 1     | $0 (Pexels 免費) + $0.04~0.08 |
+| Google + OpenAI | 1~2 + 1   | $0.017 + $0.04~0.08   |
+| Pexels + Gemini | 1 + 1     | $0 (Pexels 免費) + $0.01~0.05 |
+| Google + Gemini | 1~2 + 1   | $0.017 + $0.01~0.05   |
+
+> Google Maps/Places API 有每月 $200 免費額度，OpenAI/Gemini 圖像生成依實際 API 價格計算。
+
+---
