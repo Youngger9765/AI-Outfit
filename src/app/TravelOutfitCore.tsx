@@ -495,23 +495,8 @@ const TravelOutfitCore = () => {
         {/* Tab2：Google Map（預留） */}
         {tab === 'google' && (
           <div className="flex flex-col items-center py-8 w-full">
-            {isLoaded ? (
-              <GoogleMap
-                mapContainerStyle={{ width: '100%', height: '400px' }}
-                center={{ lat: 35.6895, lng: 139.6917 }}
-                zoom={14}
-                options={{
-                  zoomControl: true,
-                  mapTypeControl: false,
-                  streetViewControl: false,
-                  fullscreenControl: true
-                }}
-              >
-                <Marker position={{ lat: 35.6895, lng: 139.6917 }} />
-              </GoogleMap>
-            ) : (
-              <div className="text-gray-400 text-lg">地圖載入中...</div>
-            )}
+            {/* 地點搜尋 input + 按鈕 */}
+            <GoogleMapSearch />
           </div>
         )}
       </div>
@@ -813,6 +798,97 @@ const TravelOutfitCore = () => {
         </div>
       </footer>
     </div>
+  );
+};
+
+// 新增 GoogleMapSearch 元件
+const GoogleMapSearch = () => {
+  const [mapCenter, setMapCenter] = useState({ lat: 35.6895, lng: 139.6917 });
+  const [markerPos, setMarkerPos] = useState({ lat: 35.6895, lng: 139.6917 });
+  const [mapZoom, setMapZoom] = useState(14);
+  const [searchInput, setSearchInput] = useState('');
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState('');
+  const mapRef = useRef<google.maps.Map | null>(null);
+
+  const handleSearchLocation = async () => {
+    if (!searchInput.trim()) return;
+    setSearchLoading(true);
+    setSearchError('');
+    try {
+      const res = await fetch(
+        `https://places.googleapis.com/v1/places:searchText?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Goog-FieldMask': '*'
+          },
+          body: JSON.stringify({
+            textQuery: searchInput,
+            languageCode: 'zh-TW',
+            regionCode: 'JP'
+          })
+        }
+      );
+      const data = await res.json();
+      if (data.places && data.places[0] && data.places[0].location) {
+        const loc = data.places[0].location;
+        setMarkerPos({ lat: loc.latitude, lng: loc.longitude });
+        setMapCenter({ lat: loc.latitude, lng: loc.longitude });
+        setMapZoom(16);
+      } else {
+        setSearchError('查無此地點，請嘗試其他關鍵字');
+      }
+    } catch {
+      setSearchError('搜尋失敗，請稍後再試');
+    }
+    setSearchLoading(false);
+  };
+
+  return (
+    <>
+      <div className="w-full max-w-md mb-4 flex gap-2">
+        <input
+          type="text"
+          className="flex-1 border border-gray-300 rounded-lg px-4 py-2"
+          placeholder="搜尋地點，例如：東京塔"
+          value={searchInput}
+          onChange={e => setSearchInput(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              handleSearchLocation();
+            }
+          }}
+          autoComplete="off"
+          disabled={searchLoading}
+        />
+        <button
+          onClick={handleSearchLocation}
+          disabled={searchLoading || !searchInput.trim()}
+          className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-2 rounded-lg hover:shadow-lg transition-all"
+        >
+          {searchLoading ? '搜尋中...' : '搜尋'}
+        </button>
+      </div>
+      {searchError && <div className="text-red-600 mb-4">{searchError}</div>}
+      <GoogleMap
+        mapContainerStyle={{ width: '100%', height: '400px' }}
+        center={mapCenter}
+        zoom={mapZoom}
+        options={{
+          zoomControl: true,
+          mapTypeControl: false,
+          streetViewControl: false,
+          fullscreenControl: true
+        }}
+        onLoad={map => { mapRef.current = map; }}
+      >
+        <Marker position={markerPos} />
+      </GoogleMap>
+      <div className="mt-4 text-gray-600 text-sm">目前座標：{markerPos.lat.toFixed(5)}, {markerPos.lng.toFixed(5)}</div>
+    </>
   );
 };
 
