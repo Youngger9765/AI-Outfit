@@ -54,7 +54,7 @@ const TravelOutfitCore = () => {
   >(null);
   const [generatedContent, setGeneratedContent] = useState<GeneratedContent | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [aiProvider, setAiProvider] = useState<'openai' | 'gemini'>('openai');
+  const [aiProvider, setAiProvider] = useState<'openai' | 'gemini'>('gemini');
   
   const clothesInputRef = useRef<HTMLInputElement>(null);
   const selfieInputRef = useRef<HTMLInputElement>(null);
@@ -513,21 +513,21 @@ const TravelOutfitCore = () => {
           <input
             type="radio"
             name="aiProvider"
-            value="openai"
-            checked={aiProvider === 'openai'}
-            onChange={() => setAiProvider('openai')}
-          />
-          OpenAI
-        </label>
-        <label className="flex items-center gap-2">
-          <input
-            type="radio"
-            name="aiProvider"
             value="gemini"
             checked={aiProvider === 'gemini'}
             onChange={() => setAiProvider('gemini')}
           />
           Google Gemini
+        </label>
+        <label className="flex items-center gap-2">
+          <input
+            type="radio"
+            name="aiProvider"
+            value="openai"
+            checked={aiProvider === 'openai'}
+            onChange={() => setAiProvider('openai')}
+          />
+          OpenAI
         </label>
       </div>
       <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
