@@ -191,10 +191,10 @@
 - **響應式設計**：支援手機、平板、桌面
 
 ### 4.1.1 後端 Google Gemini 串接方式（2024/6更新）
-- **AI 生成（Gemini）**：支援直接以 Google Gemini API 金鑰（`GOOGLE_GENAI_API_Key`）串接，不再強制需要 service account json。
+- **AI 生成（Gemini）**：支援直接以 Google Gemini API 金鑰（`GOOGLE_GENAI_API_KEY`）串接，不再強制需要 service account json。
 - **Storage（GCS）**：仍可用 service account json 物件初始化。
 - **環境變數**：
-  - `GOOGLE_GENAI_API_Key`：用於 Gemini 影像生成
+  - `GOOGLE_GENAI_API_KEY`：用於 Gemini 影像生成
   - `GOOGLE_SERVICE_ACCOUNT_JSON`：用於 GCS 上傳
 
 ### 4.2 核心技術功能

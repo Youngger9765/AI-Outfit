@@ -16,7 +16,7 @@ const storage = credentialJson
 
 // GoogleGenAI 改用 API KEY 初始化（不能同時傳 project/location）
 const ai = new GoogleGenAI({
-  apiKey: process.env.GOOGLE_GENAI_API_Key,
+  apiKey: process.env.GOOGLE_GENAI_API_KEY,
 });
 const model = 'gemini-2.0-flash-preview-image-generation';
 
