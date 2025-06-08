@@ -38,6 +38,13 @@ interface GeneratedContent {
   };
 }
 
+// 工具函式：fetch public file as File
+async function fetchPublicFileAsFile(url: string, name: string, type?: string) {
+  const res = await fetch(url);
+  const blob = await res.blob();
+  return new File([blob], name, { type: type || blob.type });
+}
+
 const TravelOutfitCore = () => {
   const [uploadedClothes, setUploadedClothes] = useState<UploadedCloth[]>([]);
   const [selfieImage, setSelfieImage] = useState<SelfieImage | null>(null);
@@ -46,6 +53,7 @@ const TravelOutfitCore = () => {
   >(null);
   const [generatedContent, setGeneratedContent] = useState<GeneratedContent | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [aiProvider, setAiProvider] = useState<'openai' | 'gemini'>('openai');
   
   const clothesInputRef = useRef<HTMLInputElement>(null);
   const selfieInputRef = useRef<HTMLInputElement>(null);
@@ -124,7 +132,9 @@ const TravelOutfitCore = () => {
         const blob = await res.blob();
         formData.append('images', blob, 'location.jpg');
       }
-      const res = await fetch('/api/edit-image', {
+      // 根據用戶選擇的 AI 服務商決定 endpoint
+      const endpoint = aiProvider === 'openai' ? '/api/edit-image' : '/api/edit-image-gemini';
+      const res = await fetch(endpoint, {
         method: 'POST',
         body: formData,
       });
@@ -171,7 +181,37 @@ const TravelOutfitCore = () => {
         <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-4">上傳你的衣服</h2>
         <p className="text-gray-600">拍照或選擇你想要搭配的衣服照片</p>
       </div>
-
+      {/* 一鍵帶入範例衣服 */}
+      <div className="flex justify-center mb-4">
+        <button
+          className="bg-gray-200 px-4 py-2 rounded-lg"
+          onClick={async () => {
+            const files = await Promise.all([
+              fetchPublicFileAsFile('/hat.jpeg', 'hat.jpeg'),
+              fetchPublicFileAsFile('/clothes.jpeg', 'clothes.jpeg'),
+              fetchPublicFileAsFile('/necklance.webp', 'necklance.webp'),
+              fetchPublicFileAsFile('/pants.jpg', 'pants.jpg'),
+            ]);
+            files.forEach(file => {
+              const reader = new FileReader();
+              reader.onload = (e) => {
+                setUploadedClothes(prev => [
+                  ...prev,
+                  {
+                    id: Date.now() + Math.random(),
+                    file,
+                    preview: e.target?.result || null,
+                    name: file.name
+                  }
+                ]);
+              };
+              reader.readAsDataURL(file);
+            });
+          }}
+        >
+          一鍵帶入範例衣服
+        </button>
+      </div>
       <div 
         className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-purple-400 transition-colors cursor-pointer"
         onClick={() => { if (clothesInputRef.current) clothesInputRef.current.click(); }}
@@ -228,7 +268,25 @@ const TravelOutfitCore = () => {
         <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-4">上傳你的自拍照</h2>
         <p className="text-gray-600">讓 AI 了解你的身形和風格偏好</p>
       </div>
-
+      {/* 一鍵帶入範例自拍 */}
+      <div className="flex justify-center mb-4">
+        <button
+          className="bg-gray-200 px-4 py-2 rounded-lg"
+          onClick={async () => {
+            const file = await fetchPublicFileAsFile('/sample-girl.jpeg', 'sample-girl.jpeg');
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              setSelfieImage({
+                file,
+                preview: e.target ? e.target.result : null
+              });
+            };
+            reader.readAsDataURL(file);
+          }}
+        >
+          一鍵帶入範例自拍
+        </button>
+      </div>
       <div 
         className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-purple-400 transition-colors cursor-pointer"
         onClick={() => { if (selfieInputRef.current) selfieInputRef.current.click(); }}
@@ -311,6 +369,23 @@ const TravelOutfitCore = () => {
           <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-4">目的地規劃</h2>
           <p className="text-gray-600">輸入目的地，搜尋並選擇代表照片</p>
         </div>
+        {/* 一鍵帶入範例地點 */}
+        <div className="flex justify-center mb-4">
+          <button
+            className="bg-gray-200 px-4 py-2 rounded-lg"
+            onClick={() => {
+              setResult({
+                name: '東京',
+                address: '日本東京都',
+                map_url: 'https://maps.google.com/?q=東京',
+                images: ['/tokyo.jpeg']
+              });
+              setSelectedPhoto('/tokyo.jpeg');
+            }}
+          >
+            一鍵帶入範例地點
+          </button>
+        </div>
         <div className="flex gap-2 mb-6">
           <input
             type="text"
@@ -377,6 +452,29 @@ const TravelOutfitCore = () => {
   const Step4Prepare = () => (
     <div className="max-w-md mx-auto text-center">
       <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-4">準備生成你的旅遊穿搭照片</h2>
+      {/* AI 服務商選擇器 */}
+      <div className="flex justify-center mb-6 gap-6">
+        <label className="flex items-center gap-2">
+          <input
+            type="radio"
+            name="aiProvider"
+            value="openai"
+            checked={aiProvider === 'openai'}
+            onChange={() => setAiProvider('openai')}
+          />
+          OpenAI
+        </label>
+        <label className="flex items-center gap-2">
+          <input
+            type="radio"
+            name="aiProvider"
+            value="gemini"
+            checked={aiProvider === 'gemini'}
+            onChange={() => setAiProvider('gemini')}
+          />
+          Google Gemini
+        </label>
+      </div>
       <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
         <div className="mb-6">
           <h3 className="font-bold text-gray-700 mb-2">你已選擇的照片</h3>
