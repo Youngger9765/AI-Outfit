@@ -559,7 +559,7 @@ const TravelOutfitCore = () => {
                 {uploadedClothes.map((item, idx) => (
                   // FileReader 產生的 data URL 只能用 <img>，加 eslint disable
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img key={idx} src={item.preview as string} alt={item.name} className="w-16 h-16 object-cover rounded-md border" />
+                  <img key={idx} src={item.preview as string} alt={item.name} className="mx-auto w-16 h-16 object-cover rounded-md border" />
                 ))}
               </div>
             </div>
@@ -568,14 +568,14 @@ const TravelOutfitCore = () => {
               {selfieImage && (
                 // FileReader 產生的 data URL 只能用 <img>，加 eslint disable
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={selfieImage.preview as string} alt="自拍照" className="w-16 h-16 object-cover rounded-md border" />
+                <img src={selfieImage.preview as string} alt="自拍照" className="mx-auto w-16 h-16 object-cover rounded-md border" />
               )}
             </div>
             <div>
               <div className="text-sm text-gray-500 mb-1">地點代表照片</div>
               {selectedDestination?.image && (
                 <div>
-                  <Image src={selectedDestination.image} alt="地點代表照片" width={64} height={64} className="w-16 h-16 object-cover rounded-md border mb-1" unoptimized />
+                  <Image src={selectedDestination.image} alt="地點代表照片" width={64} height={64} className="mx-auto w-16 h-16 object-cover rounded-md border mb-1" unoptimized />
                   <div className="text-xs text-gray-600 truncate max-w-[64px]">{selectedDestination.name}</div>
                 </div>
               )}
