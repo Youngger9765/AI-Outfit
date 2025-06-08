@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 import { GoogleGenAI } from '@google/genai';
 const formidable = require("formidable");
 import fs from 'fs';
