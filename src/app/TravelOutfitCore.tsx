@@ -71,6 +71,16 @@ const TravelOutfitCore = () => {
 
   // 新增 destinationTab 狀態
   const [destinationTab, setDestinationTab] = useState<'pexels' | 'google'>('pexels');
+  const [googleSearchInput, setGoogleSearchInput] = useState('');
+  const [googleSearchLoading, setGoogleSearchLoading] = useState(false);
+  const [googleSearchError, setGoogleSearchError] = useState('');
+  const [googlePlacePhotos, setGooglePlacePhotos] = useState<string[]>([]);
+  const [googleSelectedPhoto, setGoogleSelectedPhoto] = useState('');
+  const [googlePlaceInfo, setGooglePlaceInfo] = useState<{ name: string; address: string; url: string } | null>(null);
+  const [googleMapCenter, setGoogleMapCenter] = useState({ lat: 35.6895, lng: 139.6917 });
+  const [googleMarkerPos, setGoogleMarkerPos] = useState({ lat: 35.6895, lng: 139.6917 });
+  const [googleMapZoom, setGoogleMapZoom] = useState(14);
+  const [googleModalPhoto, setGoogleModalPhoto] = useState<string | null>(null);
 
   // Google Map 狀態
   const mapCenter = { lat: 35.6895, lng: 139.6917 }; // 東京
@@ -362,7 +372,6 @@ const TravelOutfitCore = () => {
     setSelectedPhoto: React.Dispatch<React.SetStateAction<string>>,
     setSelectedDestination: React.Dispatch<React.SetStateAction<{ name: string; address: string; mapUrl: string; image: string } | null>>
   }) => {
-    const [tab, setTab] = useState<'pexels' | 'google'>('pexels');
     const [inputValue, setInputValue] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -394,126 +403,99 @@ const TravelOutfitCore = () => {
 
     return (
       <div className="max-w-2xl mx-auto">
-        {/* 共用標題區塊 */}
-        <div className="text-center mb-8">
-          <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-4">目的地規劃</h2>
-          <p className="text-gray-600">輸入目的地，搜尋並選擇代表照片</p>
-        </div>
-        {/* Tab 切換列 */}
-        <div className="flex mb-6 border-b">
+        {/* 一鍵帶入範例地點 */}
+        <div className="flex justify-center mb-4">
           <button
-            className={`px-6 py-2 font-bold ${tab === 'pexels' ? 'border-b-2 border-purple-500 text-purple-700' : 'text-gray-500'}`}
-            onClick={() => setTab('pexels')}
+            className="bg-gray-200 px-4 py-2 rounded-lg"
+            onClick={() => {
+              const example = {
+                name: '東京鐵塔',
+                address: '日本東京都港區芝公園4-2-8',
+                map_url: 'https://goo.gl/maps/2m1Qw1Qw1Qw1Qw1Q8',
+                images: [
+                  '/tokyo.jpeg',
+                  '/tokyo-1.jpeg',
+                  '/tokyo-2.jpeg'
+                ]
+              };
+              setResult(example);
+              setSelectedPhoto(example.images[0]);
+              setSelectedDestination({
+                name: example.name,
+                address: example.address,
+                mapUrl: example.map_url,
+                image: example.images[0]
+              });
+            }}
           >
-            Pexels 圖片搜尋
-          </button>
-          <button
-            className={`px-6 py-2 font-bold ${tab === 'google' ? 'border-b-2 border-blue-500 text-blue-700' : 'text-gray-500'}`}
-            onClick={() => setTab('google')}
-          >
-            Google Map（敬請期待）
+            一鍵帶入範例地點
           </button>
         </div>
-        {/* Tab1：Pexels 圖片搜尋 */}
-        {tab === 'pexels' && (
-          <>
-            {/* 一鍵帶入範例地點 */}
-            <div className="flex justify-center mb-4">
-              <button
-                className="bg-gray-200 px-4 py-2 rounded-lg"
-                onClick={() => {
-                  const example = {
-                    name: '東京',
-                    address: '日本東京都',
-                    map_url: 'https://maps.google.com/?q=東京',
-                    images: ['/tokyo.jpeg']
-                  };
-                  setResult(example);
-                  setSelectedPhoto('/tokyo.jpeg');
-                  setSelectedDestination({
-                    name: example.name,
-                    address: example.address,
-                    mapUrl: example.map_url,
-                    image: '/tokyo.jpeg'
-                  });
-                }}
-              >
-                一鍵帶入範例地點
-              </button>
+        {/* 只保留 Pexels 搜尋 input、搜尋結果等 UI */}
+        <div className="flex gap-2 mb-6">
+          <input
+            type="text"
+            className="flex-1 border border-gray-300 rounded-lg px-4 py-2"
+            placeholder="輸入目的地，例如：東京鐵塔"
+            value={inputValue}
+            onChange={e => setInputValue(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleSearch();
+              }
+            }}
+            autoComplete="off"
+            disabled={loading}
+          />
+          <button
+            onClick={handleSearch}
+            disabled={loading || !inputValue.trim()}
+            className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-2 rounded-lg hover:shadow-lg transition-all"
+          >
+            {loading ? '搜尋中...' : '搜尋地點'}
+          </button>
+        </div>
+        {error && <div className="text-red-600 mb-4">{error}</div>}
+        {result && (
+          <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
+            <div className="mb-2">
+              <span className="font-bold">地點：</span>{result.name}
             </div>
-            <div className="flex gap-2 mb-6">
-              <input
-                type="text"
-                className="flex-1 border border-gray-300 rounded-lg px-4 py-2"
-                placeholder="輸入目的地，例如：東京鐵塔"
-                value={inputValue}
-                onChange={e => setInputValue(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleSearch();
-                  }
-                }}
-                autoComplete="off"
-                disabled={loading}
-              />
-              <button
-                onClick={handleSearch}
-                disabled={loading || !inputValue.trim()}
-                className="bg-gradient-to-r from-pink-500 to-purple-600 text-white px-6 py-2 rounded-lg hover:shadow-lg transition-all"
-              >
-                {loading ? '搜尋中...' : '搜尋地點'}
-              </button>
+            <div className="mb-2">
+              <span className="font-bold">地址：</span>{result.address}
             </div>
-            {error && <div className="text-red-600 mb-4">{error}</div>}
-            {result && (
-              <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
-                <div className="mb-2">
-                  <span className="font-bold">地點：</span>{result.name}
-                </div>
-                <div className="mb-2">
-                  <span className="font-bold">地址：</span>{result.address}
-                </div>
-                <div className="mb-4">
-                  <a href={result.map_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">點擊查看 Google 地圖</a>
-                </div>
-                <div className="mb-4 grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {result.images && result.images.map((url: string, idx: number) => (
-                    <div key={idx} className="relative group">
-                      <Image
-                        src={url}
-                        alt={`代表照片${idx+1}`}
-                        width={200}
-                        height={120}
-                        className={`rounded-lg cursor-pointer border-4 transition-all duration-200 ${selectedPhoto === url ? 'border-purple-500' : 'border-transparent'}`}
-                        onClick={() => {
-                          setSelectedPhoto(url);
-                          setSelectedDestination({
-                            name: result.name,
-                            address: result.address,
-                            mapUrl: result.map_url,
-                            image: url
-                          });
-                        }}
-                        unoptimized
-                      />
-                      {selectedPhoto === url && (
-                        <div className="absolute inset-0 bg-purple-500/30 flex items-center justify-center rounded-lg pointer-events-none">
-                          <Check className="text-white" size={48} />
-                        </div>
-                      )}
+            <div className="mb-4">
+              <a href={result.map_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">點擊查看 Google 地圖</a>
+            </div>
+            <div className="mb-4 grid grid-cols-2 md:grid-cols-3 gap-3">
+              {result.images && result.images.map((url: string, idx: number) => (
+                <div key={idx} className="relative group">
+                  <Image
+                    src={url}
+                    alt={`代表照片${idx+1}`}
+                    width={200}
+                    height={120}
+                    className={`rounded-lg cursor-pointer border-4 transition-all duration-200 ${selectedPhoto === url ? 'border-purple-500' : 'border-transparent'}`}
+                    onClick={() => {
+                      setSelectedPhoto(url);
+                      setSelectedDestination({
+                        name: result.name,
+                        address: result.address,
+                        mapUrl: result.map_url,
+                        image: url
+                      });
+                    }}
+                    unoptimized
+                  />
+                  {selectedPhoto === url && (
+                    <div className="absolute inset-0 bg-purple-500/30 flex items-center justify-center rounded-lg pointer-events-none">
+                      <Check className="text-white" size={48} />
                     </div>
-                  ))}
+                  )}
                 </div>
-              </div>
-            )}
-          </>
-        )}
-        {/* Tab2：Google Map（預留） */}
-        {tab === 'google' && (
-          <div className="flex flex-col items-center py-8 w-full">
-            {/* 地點搜尋 input + 按鈕 */}
-            <GoogleMapSearch />
+              ))}
+            </div>
           </div>
         )}
       </div>
@@ -773,13 +755,59 @@ const TravelOutfitCore = () => {
         </div>
         {/* 步驟3：目的地選擇 */}
         <div ref={destinationRef} className="mb-16">
-          <Step3DestinationPlanner
-            result={destinationResult}
-            setResult={setDestinationResult}
-            selectedPhoto={selectedPhoto}
-            setSelectedPhoto={setSelectedPhoto}
-            setSelectedDestination={setSelectedDestination}
-          />
+          {/* 共用標題區塊 */}
+          <div className="text-center mb-8">
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-4">目的地規劃</h2>
+            <p className="text-gray-600">輸入目的地，搜尋並選擇代表照片</p>
+          </div>
+          <div className="flex mb-6 border-b">
+            <button
+              className={`px-6 py-2 font-bold ${destinationTab === 'pexels' ? 'border-b-2 border-purple-500 text-purple-700' : 'text-gray-500'}`}
+              onClick={() => setDestinationTab('pexels')}
+            >
+              Pexels 圖片搜尋
+            </button>
+            <button
+              className={`px-6 py-2 font-bold ${destinationTab === 'google' ? 'border-b-2 border-blue-500 text-blue-700' : 'text-gray-500'}`}
+              onClick={() => setDestinationTab('google')}
+            >
+              Google Map（敬請期待）
+            </button>
+          </div>
+          {destinationTab === 'pexels' && (
+            <Step3DestinationPlanner
+              result={destinationResult}
+              setResult={setDestinationResult}
+              selectedPhoto={selectedPhoto}
+              setSelectedPhoto={setSelectedPhoto}
+              setSelectedDestination={setSelectedDestination}
+            />
+          )}
+          {destinationTab === 'google' && (
+            <GoogleMapSearch
+              googleSearchInput={googleSearchInput}
+              setGoogleSearchInput={setGoogleSearchInput}
+              googleSearchLoading={googleSearchLoading}
+              setGoogleSearchLoading={setGoogleSearchLoading}
+              googleSearchError={googleSearchError}
+              setGoogleSearchError={setGoogleSearchError}
+              googlePlacePhotos={googlePlacePhotos}
+              setGooglePlacePhotos={setGooglePlacePhotos}
+              googleSelectedPhoto={googleSelectedPhoto}
+              setGoogleSelectedPhoto={setGoogleSelectedPhoto}
+              googlePlaceInfo={googlePlaceInfo}
+              setGooglePlaceInfo={setGooglePlaceInfo}
+              googleMapCenter={googleMapCenter}
+              setGoogleMapCenter={setGoogleMapCenter}
+              googleMarkerPos={googleMarkerPos}
+              setGoogleMarkerPos={setGoogleMarkerPos}
+              googleMapZoom={googleMapZoom}
+              setGoogleMapZoom={setGoogleMapZoom}
+              googleModalPhoto={googleModalPhoto}
+              setGoogleModalPhoto={setGoogleModalPhoto}
+              setSelectedDestination={setSelectedDestination}
+            />
+          )}
           <div className="flex justify-center mt-8">
             <button
               onClick={() => {
@@ -811,27 +839,63 @@ const TravelOutfitCore = () => {
   );
 };
 
-// 新增 GoogleMapSearch 元件
-const GoogleMapSearch = () => {
-  const [mapCenter, setMapCenter] = useState({ lat: 35.6895, lng: 139.6917 });
-  const [markerPos, setMarkerPos] = useState({ lat: 35.6895, lng: 139.6917 });
-  const [mapZoom, setMapZoom] = useState(14);
-  const [searchInput, setSearchInput] = useState('');
-  const [searchLoading, setSearchLoading] = useState(false);
-  const [searchError, setSearchError] = useState('');
-  const [placePhotos, setPlacePhotos] = useState<string[]>([]); // 照片網址陣列
-  const [selectedPhoto, setSelectedPhoto] = useState<string>('');
-  const [placeInfo, setPlaceInfo] = useState<{ name: string; address: string; url: string } | null>(null);
-  const [modalPhoto, setModalPhoto] = useState<string | null>(null);
+// GoogleMapSearch 元件
+interface GoogleMapSearchProps {
+  googleSearchInput: string;
+  setGoogleSearchInput: React.Dispatch<React.SetStateAction<string>>;
+  googleSearchLoading: boolean;
+  setGoogleSearchLoading: React.Dispatch<React.SetStateAction<boolean>>;
+  googleSearchError: string;
+  setGoogleSearchError: React.Dispatch<React.SetStateAction<string>>;
+  googlePlacePhotos: string[];
+  setGooglePlacePhotos: React.Dispatch<React.SetStateAction<string[]>>;
+  googleSelectedPhoto: string;
+  setGoogleSelectedPhoto: React.Dispatch<React.SetStateAction<string>>;
+  googlePlaceInfo: { name: string; address: string; url: string } | null;
+  setGooglePlaceInfo: React.Dispatch<React.SetStateAction<{ name: string; address: string; url: string } | null>>;
+  googleMapCenter: { lat: number; lng: number };
+  setGoogleMapCenter: React.Dispatch<React.SetStateAction<{ lat: number; lng: number }>>;
+  googleMarkerPos: { lat: number; lng: number };
+  setGoogleMarkerPos: React.Dispatch<React.SetStateAction<{ lat: number; lng: number }>>;
+  googleMapZoom: number;
+  setGoogleMapZoom: React.Dispatch<React.SetStateAction<number>>;
+  googleModalPhoto: string | null;
+  setGoogleModalPhoto: React.Dispatch<React.SetStateAction<string | null>>;
+  setSelectedDestination: React.Dispatch<React.SetStateAction<{ name: string; address: string; mapUrl: string; image: string } | null>>;
+}
+
+const GoogleMapSearch = ({
+  googleSearchInput,
+  setGoogleSearchInput,
+  googleSearchLoading,
+  setGoogleSearchLoading,
+  googleSearchError,
+  setGoogleSearchError,
+  googlePlacePhotos,
+  setGooglePlacePhotos,
+  googleSelectedPhoto,
+  setGoogleSelectedPhoto,
+  googlePlaceInfo,
+  setGooglePlaceInfo,
+  googleMapCenter,
+  setGoogleMapCenter,
+  googleMarkerPos,
+  setGoogleMarkerPos,
+  googleMapZoom,
+  setGoogleMapZoom,
+  googleModalPhoto,
+  setGoogleModalPhoto,
+  setSelectedDestination
+}: GoogleMapSearchProps) => {
   const mapRef = useRef<google.maps.Map | null>(null);
 
   const handleSearchLocation = async () => {
-    if (!searchInput.trim()) return;
-    setSearchLoading(true);
-    setSearchError('');
-    setPlacePhotos([]);
-    setSelectedPhoto('');
-    setPlaceInfo(null);
+    if (!googleSearchInput.trim()) return;
+    setGoogleSearchLoading(true);
+    setGoogleSearchError('');
+    setGooglePlacePhotos([]);
+    setGoogleSelectedPhoto('');
+    setGooglePlaceInfo(null);
     try {
       const res = await fetch(
         `https://places.googleapis.com/v1/places:searchText?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`,
@@ -842,7 +906,7 @@ const GoogleMapSearch = () => {
             'X-Goog-FieldMask': '*'
           },
           body: JSON.stringify({
-            textQuery: searchInput,
+            textQuery: googleSearchInput,
             languageCode: 'zh-TW',
             regionCode: 'JP'
           })
@@ -851,11 +915,11 @@ const GoogleMapSearch = () => {
       const data = await res.json();
       if (data.places && data.places[0] && data.places[0].location) {
         const loc = data.places[0].location;
-        setMarkerPos({ lat: loc.latitude, lng: loc.longitude });
-        setMapCenter({ lat: loc.latitude, lng: loc.longitude });
-        setMapZoom(16);
+        setGoogleMarkerPos({ lat: loc.latitude, lng: loc.longitude });
+        setGoogleMapCenter({ lat: loc.latitude, lng: loc.longitude });
+        setGoogleMapZoom(16);
         // 地點資訊
-        setPlaceInfo({
+        setGooglePlaceInfo({
           name: data.places[0].displayName?.text || '',
           address: data.places[0].formattedAddress || '',
           url: data.places[0].googleMapsUri || ''
@@ -866,28 +930,28 @@ const GoogleMapSearch = () => {
           const photoUrls = photos.map((photo: any) =>
             `https://places.googleapis.com/v1/${photo.name}/media?maxWidthPx=600&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`
           );
-          setPlacePhotos(photoUrls);
+          setGooglePlacePhotos(photoUrls);
         } else {
-          setPlacePhotos([]);
+          setGooglePlacePhotos([]);
         }
       } else {
-        setSearchError('查無此地點，請嘗試其他關鍵字');
+        setGoogleSearchError('查無此地點，請嘗試其他關鍵字');
       }
     } catch {
-      setSearchError('搜尋失敗，請稍後再試');
+      setGoogleSearchError('搜尋失敗，請稍後再試');
     }
-    setSearchLoading(false);
+    setGoogleSearchLoading(false);
   };
 
   const handleMapClick = async (e: google.maps.MapMouseEvent) => {
     const placeId = (e as any).placeId;
     if (placeId) {
       (e as any).stop && (e as any).stop();
-      setSearchInput('');
-      setSearchError('');
-      setPlacePhotos([]);
-      setSelectedPhoto('');
-      setPlaceInfo(null);
+      setGoogleSearchInput('');
+      setGoogleSearchError('');
+      setGooglePlacePhotos([]);
+      setGoogleSelectedPhoto('');
+      setGooglePlaceInfo(null);
       try {
         const res = await fetch(
           `https://places.googleapis.com/v1/places/${placeId}?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`,
@@ -897,11 +961,11 @@ const GoogleMapSearch = () => {
         );
         const data = await res.json();
         if (data.location) {
-          setMarkerPos({ lat: data.location.latitude, lng: data.location.longitude });
-          setMapCenter({ lat: data.location.latitude, lng: data.location.longitude });
-          setMapZoom(16);
+          setGoogleMarkerPos({ lat: data.location.latitude, lng: data.location.longitude });
+          setGoogleMapCenter({ lat: data.location.latitude, lng: data.location.longitude });
+          setGoogleMapZoom(16);
         }
-        setPlaceInfo({
+        setGooglePlaceInfo({
           name: data.displayName?.text || '',
           address: data.formattedAddress || '',
           url: data.googleMapsUri || ''
@@ -910,12 +974,12 @@ const GoogleMapSearch = () => {
           const photoUrls = data.photos.map((photo: any) =>
             `https://places.googleapis.com/v1/${photo.name}/media?maxWidthPx=600&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`
           );
-          setPlacePhotos(photoUrls);
+          setGooglePlacePhotos(photoUrls);
         } else {
-          setPlacePhotos([]);
+          setGooglePlacePhotos([]);
         }
       } catch {
-        setSearchError('取得地點資訊失敗，請稍後再試');
+        setGoogleSearchError('取得地點資訊失敗，請稍後再試');
       }
     }
   };
@@ -927,8 +991,8 @@ const GoogleMapSearch = () => {
           type="text"
           className="flex-1 border border-gray-300 rounded-lg px-4 py-2"
           placeholder="搜尋地點，例如：東京塔"
-          value={searchInput}
-          onChange={e => setSearchInput(e.target.value)}
+          value={googleSearchInput}
+          onChange={e => setGoogleSearchInput(e.target.value)}
           onKeyDown={e => {
             if (e.key === 'Enter') {
               e.preventDefault();
@@ -936,21 +1000,21 @@ const GoogleMapSearch = () => {
             }
           }}
           autoComplete="off"
-          disabled={searchLoading}
+          disabled={googleSearchLoading}
         />
         <button
           onClick={handleSearchLocation}
-          disabled={searchLoading || !searchInput.trim()}
+          disabled={googleSearchLoading || !googleSearchInput.trim()}
           className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-2 rounded-lg hover:shadow-lg transition-all"
         >
-          {searchLoading ? '搜尋中...' : '搜尋'}
+          {googleSearchLoading ? '搜尋中...' : '搜尋'}
         </button>
       </div>
-      {searchError && <div className="text-red-600 mb-4">{searchError}</div>}
+      {googleSearchError && <div className="text-red-600 mb-4">{googleSearchError}</div>}
       <GoogleMap
         mapContainerStyle={{ width: '100%', height: '400px' }}
-        center={mapCenter}
-        zoom={mapZoom}
+        center={googleMapCenter}
+        zoom={googleMapZoom}
         options={{
           zoomControl: true,
           mapTypeControl: false,
@@ -960,38 +1024,59 @@ const GoogleMapSearch = () => {
         onLoad={map => { mapRef.current = map; }}
         onClick={handleMapClick}
       >
-        <Marker position={markerPos} />
+        <Marker position={googleMarkerPos} />
       </GoogleMap>
-      <div className="mt-4 text-gray-600 text-sm">目前座標：{markerPos.lat.toFixed(5)}, {markerPos.lng.toFixed(5)}</div>
+      <div className="mt-4 text-gray-600 text-sm">目前座標：{googleMarkerPos.lat.toFixed(5)}, {googleMarkerPos.lng.toFixed(5)}</div>
       {/* 地點資訊卡片 */}
-      {placeInfo && (
+      {googlePlaceInfo && (
         <div className="w-full max-w-2xl bg-gray-50 rounded-lg shadow p-4 mb-4">
-          <div className="font-bold text-lg mb-1">{placeInfo.name}</div>
-          <div className="text-gray-700 mb-1">{placeInfo.address}</div>
-          {placeInfo.url && (
-            <a href={placeInfo.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline text-sm">在 Google Maps 上查看</a>
+          <div className="font-bold text-lg mb-1">{googlePlaceInfo.name}</div>
+          <div className="text-gray-700 mb-1">{googlePlaceInfo.address}</div>
+          {googlePlaceInfo.url && (
+            <a href={googlePlaceInfo.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline text-sm">在 Google Maps 上查看</a>
           )}
         </div>
       )}
       {/* 地點照片選擇區塊 */}
       <div className="w-full max-w-2xl mt-2">
         <div className="font-semibold mb-2">地點照片：</div>
-        {placePhotos.length > 0 ? (
+        {googlePlacePhotos.length > 0 ? (
           <div className="flex flex-wrap gap-4 pb-2">
-            {placePhotos.map((url, idx) => (
+            {googlePlacePhotos.map((url, idx) => (
               <div key={url} className="relative group">
                 <img
                   src={url}
                   alt={`地點照片${idx + 1}`}
-                  className={`w-40 h-40 object-contain bg-white rounded-lg border-2 transition-all cursor-pointer duration-200 hover:shadow-xl ${selectedPhoto === url ? 'border-blue-500 ring-2 ring-blue-400' : 'border-gray-200'}`}
-                  onClick={() => setModalPhoto(url)}
-                  onDoubleClick={() => setSelectedPhoto(url)}
+                  className={`w-40 h-40 object-contain bg-white rounded-lg border-2 transition-all cursor-pointer duration-200 hover:shadow-xl ${googleSelectedPhoto === url ? 'border-blue-500 ring-2 ring-blue-400' : 'border-gray-200'}`}
+                  onClick={() => setGoogleModalPhoto(url)}
+                  onDoubleClick={() => {
+                    setGoogleSelectedPhoto(url);
+                    if (googlePlaceInfo) {
+                      setSelectedDestination({
+                        name: googlePlaceInfo.name,
+                        address: googlePlaceInfo.address,
+                        mapUrl: googlePlaceInfo.url,
+                        image: url
+                      });
+                    }
+                  }}
                   title="點擊放大，雙擊選擇代表照"
                 />
                 <button
-                  className={`absolute top-1 right-1 px-2 py-0.5 text-xs rounded bg-white/80 border ${selectedPhoto === url ? 'border-blue-500 text-blue-600 font-bold' : 'border-gray-300 text-gray-600'} shadow`}
-                  onClick={e => { e.stopPropagation(); setSelectedPhoto(url); }}
-                >{selectedPhoto === url ? '已選擇' : '選擇'}</button>
+                  className={`absolute top-1 right-1 px-2 py-0.5 text-xs rounded bg-white/80 border ${googleSelectedPhoto === url ? 'border-blue-500 text-blue-600 font-bold' : 'border-gray-300 text-gray-600'} shadow`}
+                  onClick={e => {
+                    e.stopPropagation();
+                    setGoogleSelectedPhoto(url);
+                    if (googlePlaceInfo) {
+                      setSelectedDestination({
+                        name: googlePlaceInfo.name,
+                        address: googlePlaceInfo.address,
+                        mapUrl: googlePlaceInfo.url,
+                        image: url
+                      });
+                    }
+                  }}
+                >{googleSelectedPhoto === url ? '已選擇' : '選擇'}</button>
               </div>
             ))}
           </div>
@@ -999,16 +1084,16 @@ const GoogleMapSearch = () => {
           <div className="text-gray-400">查無地點照片</div>
         )}
         {/* Modal 放大圖 */}
-        {modalPhoto && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setModalPhoto(null)}>
-            <img src={modalPhoto} alt="放大地點照片" className="max-w-3xl max-h-[80vh] rounded-lg shadow-2xl border-4 border-white" />
+        {googleModalPhoto && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setGoogleModalPhoto(null)}>
+            <img src={googleModalPhoto} alt="放大地點照片" className="max-w-3xl max-h-[80vh] rounded-lg shadow-2xl border-4 border-white" />
           </div>
         )}
         {/* 代表照大圖 */}
-        {selectedPhoto && (
+        {googleSelectedPhoto && (
           <div className="mt-6 flex flex-col items-center">
             <div className="font-semibold mb-2 text-blue-700">已選擇代表照片</div>
-            <img src={selectedPhoto} alt="代表照片" className="max-w-md max-h-96 rounded-xl border-4 border-blue-400 shadow-lg" />
+            <img src={googleSelectedPhoto} alt="代表照片" className="max-w-md max-h-96 rounded-xl border-4 border-blue-400 shadow-lg" />
           </div>
         )}
       </div>
