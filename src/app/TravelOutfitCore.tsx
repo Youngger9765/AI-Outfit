@@ -12,6 +12,7 @@ import {
   Check
 } from 'lucide-react';
 import Image from 'next/image';
+import { GoogleMap, Marker, useJsApiLoader } from '@react-google-maps/api';
 
 type UploadedCloth = {
   id: number;
@@ -67,6 +68,19 @@ const TravelOutfitCore = () => {
     { name: string; address: string; map_url: string; images: string[] } | null
   >(null);
   const [selectedPhoto, setSelectedPhoto] = useState<string>('');
+
+  // 新增 destinationTab 狀態
+  const [destinationTab, setDestinationTab] = useState<'pexels' | 'google'>('pexels');
+
+  // Google Map 狀態
+  const mapCenter = { lat: 35.6895, lng: 139.6917 }; // 東京
+  const mapZoom = 14;
+
+  // 載入 Google Maps JS API
+  const { isLoaded } = useJsApiLoader({
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+    libraries: ['places']
+  });
 
   const handleClothesUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!event.target.files) return;
@@ -480,7 +494,25 @@ const TravelOutfitCore = () => {
         )}
         {/* Tab2：Google Map（預留） */}
         {tab === 'google' && (
-          <div className="text-center text-gray-400 py-16 text-xl">Google Map 功能敬請期待</div>
+          <div className="flex flex-col items-center py-8 w-full">
+            {isLoaded ? (
+              <GoogleMap
+                mapContainerStyle={{ width: '100%', height: '400px' }}
+                center={{ lat: 35.6895, lng: 139.6917 }}
+                zoom={14}
+                options={{
+                  zoomControl: true,
+                  mapTypeControl: false,
+                  streetViewControl: false,
+                  fullscreenControl: true
+                }}
+              >
+                <Marker position={{ lat: 35.6895, lng: 139.6917 }} />
+              </GoogleMap>
+            ) : (
+              <div className="text-gray-400 text-lg">地圖載入中...</div>
+            )}
+          </div>
         )}
       </div>
     );
