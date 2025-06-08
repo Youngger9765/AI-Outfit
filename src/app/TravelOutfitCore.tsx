@@ -353,12 +353,14 @@ const TravelOutfitCore = () => {
     result,
     setResult,
     selectedPhoto,
-    setSelectedPhoto
+    setSelectedPhoto,
+    setSelectedDestination
   } : {
     result: { name: string; address: string; map_url: string; images: string[] } | null,
     setResult: React.Dispatch<React.SetStateAction<{ name: string; address: string; map_url: string; images: string[] } | null>>,
     selectedPhoto: string,
-    setSelectedPhoto: React.Dispatch<React.SetStateAction<string>>
+    setSelectedPhoto: React.Dispatch<React.SetStateAction<string>>,
+    setSelectedDestination: React.Dispatch<React.SetStateAction<{ name: string; address: string; mapUrl: string; image: string } | null>>
   }) => {
     const [tab, setTab] = useState<'pexels' | 'google'>('pexels');
     const [inputValue, setInputValue] = useState('');
@@ -420,13 +422,20 @@ const TravelOutfitCore = () => {
               <button
                 className="bg-gray-200 px-4 py-2 rounded-lg"
                 onClick={() => {
-                  setResult({
+                  const example = {
                     name: '東京',
                     address: '日本東京都',
                     map_url: 'https://maps.google.com/?q=東京',
                     images: ['/tokyo.jpeg']
-                  });
+                  };
+                  setResult(example);
                   setSelectedPhoto('/tokyo.jpeg');
+                  setSelectedDestination({
+                    name: example.name,
+                    address: example.address,
+                    mapUrl: example.map_url,
+                    image: '/tokyo.jpeg'
+                  });
                 }}
               >
                 一鍵帶入範例地點
@@ -761,22 +770,15 @@ const TravelOutfitCore = () => {
             setResult={setDestinationResult}
             selectedPhoto={selectedPhoto}
             setSelectedPhoto={setSelectedPhoto}
+            setSelectedDestination={setSelectedDestination}
           />
           <div className="flex justify-center mt-8">
             <button
               onClick={() => {
-                if (destinationResult && selectedPhoto) {
-                  setSelectedDestination({
-                    name: destinationResult.name,
-                    address: destinationResult.address,
-                    mapUrl: destinationResult.map_url,
-                    image: selectedPhoto
-                  });
-                  scrollToRef(generateRef);
-                }
+                scrollToRef(generateRef);
               }}
               className="bg-gradient-to-r from-pink-500 to-purple-600 text-white px-8 py-3 rounded-lg hover:shadow-lg transition-all"
-              disabled={!destinationResult || !selectedPhoto}
+              disabled={!selectedDestination}
             >
               下一步：生成穿搭照片
             </button>
