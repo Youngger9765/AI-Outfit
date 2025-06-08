@@ -12,7 +12,7 @@ import {
   Check
 } from 'lucide-react';
 import Image from 'next/image';
-import { GoogleMap, Marker, useJsApiLoader } from '@react-google-maps/api';
+import { GoogleMap, Marker } from '@react-google-maps/api';
 
 type UploadedCloth = {
   id: number;
@@ -38,6 +38,36 @@ interface GeneratedContent {
     recommendation: string;
   };
 }
+
+// 添加 Google Places API 的類型定義
+interface GooglePlacePhoto {
+  name: string;
+  widthPx?: number;
+  heightPx?: number;
+}
+
+interface GooglePlaceLocation {
+  latitude: number;
+  longitude: number;
+}
+
+interface GooglePlace {
+  name: string;
+  displayName?: {
+    text: string;
+  };
+  formattedAddress?: string;
+  googleMapsUri?: string;
+  location?: GooglePlaceLocation;
+  photos?: GooglePlacePhoto[];
+}
+
+interface GooglePlacesResponse {
+  places?: GooglePlace[];
+}
+
+// 移除空的介面定義
+// interface GooglePlaceResponse extends GooglePlace {}
 
 // 工具函式：fetch public file as File
 async function fetchPublicFileAsFile(url: string, name: string, type?: string) {
@@ -81,16 +111,6 @@ const TravelOutfitCore = () => {
   const [googleMarkerPos, setGoogleMarkerPos] = useState({ lat: 35.6895, lng: 139.6917 });
   const [googleMapZoom, setGoogleMapZoom] = useState(14);
   const [googleModalPhoto, setGoogleModalPhoto] = useState<string | null>(null);
-
-  // Google Map 狀態
-  const mapCenter = { lat: 35.6895, lng: 139.6917 }; // 東京
-  const mapZoom = 14;
-
-  // 載入 Google Maps JS API
-  const { isLoaded } = useJsApiLoader({
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
-    libraries: ['places']
-  });
 
   const handleClothesUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!event.target.files) return;
@@ -912,7 +932,7 @@ const GoogleMapSearch = ({
           })
         }
       );
-      const data = await res.json();
+      const data: GooglePlacesResponse = await res.json();
       if (data.places && data.places[0] && data.places[0].location) {
         const loc = data.places[0].location;
         setGoogleMarkerPos({ lat: loc.latitude, lng: loc.longitude });
@@ -927,7 +947,7 @@ const GoogleMapSearch = ({
         // 取得地點照片
         if (data.places[0].photos && data.places[0].photos.length > 0) {
           const photos = data.places[0].photos;
-          const photoUrls = photos.map((photo: any) =>
+          const photoUrls = photos.map((photo: GooglePlacePhoto) =>
             `https://places.googleapis.com/v1/${photo.name}/media?maxWidthPx=600&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`
           );
           setGooglePlacePhotos(photoUrls);
@@ -943,10 +963,12 @@ const GoogleMapSearch = ({
     setGoogleSearchLoading(false);
   };
 
-  const handleMapClick = async (e: google.maps.MapMouseEvent) => {
-    const placeId = (e as any).placeId;
+  const handleMapClick = async (
+    e: google.maps.MapMouseEvent & { placeId?: string; stop?: () => void }
+  ) => {
+    const placeId = e.placeId;
     if (placeId) {
-      (e as any).stop && (e as any).stop();
+      if (e.stop) e.stop();
       setGoogleSearchInput('');
       setGoogleSearchError('');
       setGooglePlacePhotos([]);
@@ -959,7 +981,7 @@ const GoogleMapSearch = ({
             headers: { 'X-Goog-FieldMask': '*' }
           }
         );
-        const data = await res.json();
+        const data: GooglePlace = await res.json();
         if (data.location) {
           setGoogleMarkerPos({ lat: data.location.latitude, lng: data.location.longitude });
           setGoogleMapCenter({ lat: data.location.latitude, lng: data.location.longitude });
@@ -971,8 +993,9 @@ const GoogleMapSearch = ({
           url: data.googleMapsUri || ''
         });
         if (data.photos && data.photos.length > 0) {
-          const photoUrls = data.photos.map((photo: any) =>
-            `https://places.googleapis.com/v1/${photo.name}/media?maxWidthPx=600&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`
+          const photoUrls = data.photos.map(
+            (photo: GooglePlacePhoto) =>
+              `https://places.googleapis.com/v1/${photo.name}/media?maxWidthPx=600&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`
           );
           setGooglePlacePhotos(photoUrls);
         } else {
