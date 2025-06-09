@@ -1,127 +1,131 @@
-import React, { useRef } from 'react';
-import { User, Check } from 'lucide-react';
-import imageCompression from 'browser-image-compression';
+import React, { useRef, useState } from 'react';
+import { User } from 'lucide-react';
 
-interface SelfieImage {
-  file: File;
-  preview: string | ArrayBuffer | null;
+interface SelfieUploadProps {
+  selfieImage: { file: File; preview: string | ArrayBuffer | null } | null;
+  setSelfieImage: React.Dispatch<React.SetStateAction<{ file: File; preview: string | ArrayBuffer | null } | null>>;
 }
 
-interface Step2SelfieUploadProps {
-  selfieImage: SelfieImage | null;
-  setSelfieImage: React.Dispatch<React.SetStateAction<SelfieImage | null>>;
-}
-
-// 工具函式：fetch public file as File
-async function fetchPublicFileAsFile(url: string, name: string, type?: string) {
-  const res = await fetch(url);
-  const blob = await res.blob();
-  return new File([blob], name, { type: type || blob.type });
-}
-
-// 圖片壓縮選項
-const compressionOptions = {
-  maxSizeMB: 1, // 最大檔案大小
-  maxWidthOrHeight: 1920, // 最大寬度或高度
-  useWebWorker: true, // 使用 Web Worker 進行壓縮
-};
-
-const Step2SelfieUpload: React.FC<Step2SelfieUploadProps> = ({
-  selfieImage,
-  setSelfieImage
-}) => {
+const SelfieUpload: React.FC<SelfieUploadProps> = ({ selfieImage, setSelfieImage }) => {
   const selfieInputRef = useRef<HTMLInputElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
-  const handleSelfieUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (!event.target.files) return;
-    const file = event.target.files[0];
-    if (file) {
-      try {
-        // 壓縮圖片
-        const compressedFile = await imageCompression(file, compressionOptions);
-        
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          setSelfieImage({
-            file: compressedFile,
-            preview: e.target ? e.target.result : null
-          });
-        };
-        reader.readAsDataURL(compressedFile);
-      } catch (error) {
-        console.error('圖片壓縮失敗:', error);
-        // 如果壓縮失敗，使用原始檔案
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          setSelfieImage({
-            file: file,
-            preview: e.target ? e.target.result : null
-          });
-        };
-        reader.readAsDataURL(file);
-      }
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = Array.from(e.dataTransfer.files);
+    if (files[0] && files[0].type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setSelfieImage({
+          file: files[0],
+          preview: e.target?.result || null
+        });
+      };
+      reader.readAsDataURL(files[0]);
+    }
+  };
+
+  const handleSelfieUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setSelfieImage({
+          file,
+          preview: e.target?.result || null
+        });
+      };
+      reader.readAsDataURL(file);
     }
   };
 
   return (
-    <div className="max-w-md mx-auto">
+    <div className="w-full">
       <div className="text-center mb-8">
-        <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-4">上傳你的自拍照</h2>
-        <p className="text-gray-600">讓 AI 了解你的身形和風格偏好</p>
+        <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-4">上傳個人照片</h2>
+        <p className="text-gray-600">請上傳背景簡潔、清晰的個人照。</p>
       </div>
-      {/* 一鍵帶入範例自拍 */}
-      <div className="flex justify-center mb-4">
-        <button
-          className="bg-gray-200 px-4 py-2 rounded-lg"
-          onClick={async () => {
-            const file = await fetchPublicFileAsFile('/sample-girl.jpeg', 'sample-girl.jpeg');
-            const reader = new FileReader();
-            reader.onload = (e) => {
-              setSelfieImage({
-                file,
-                preview: e.target ? e.target.result : null
-              });
-            };
-            reader.readAsDataURL(file);
-          }}
+
+      {!selfieImage ? (
+        <div 
+          className={`
+            w-full p-8 mb-6 rounded-xl
+            border-3 border-dashed
+            transition-all duration-300 ease-in-out
+            ${isDragging 
+              ? 'border-purple-500 bg-purple-50' 
+              : 'border-pink-300 hover:border-pink-500 bg-gradient-to-br from-purple-50/30 via-pink-50/30 to-white hover:from-purple-50/50 hover:via-pink-50/50 hover:to-white'
+            }
+            cursor-pointer
+            flex flex-col items-center justify-center
+            min-h-[200px]
+            relative
+          `}
+          onDragEnter={handleDragEnter}
+          onDragLeave={handleDragLeave}
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
+          onClick={() => selfieInputRef.current?.click()}
         >
-          一鍵帶入範例自拍
-        </button>
-      </div>
-      <div 
-        className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-purple-400 transition-colors cursor-pointer"
-        onClick={() => { if (selfieInputRef.current) selfieInputRef.current.click(); }}
-      >
-        {selfieImage ? (
-          <div className="relative">
-            {/* FileReader 產生的 data URL 只能用 <img>，加 eslint disable */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img 
-              src={selfieImage.preview as string} 
-              alt="自拍照預覽"
-              className="mx-auto w-48 h-64 object-cover rounded-lg shadow-lg"
-            />
-            <div className="absolute top-2 right-2 bg-green-500 text-white rounded-full p-1">
-              <Check size={16} />
+          <input
+            type="file"
+            ref={selfieInputRef}
+            className="hidden"
+            accept="image/*"
+            onChange={handleSelfieUpload}
+          />
+          
+          <div className="text-center">
+            <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-r from-pink-500/10 to-purple-500/10 rounded-full flex items-center justify-center">
+              <User className={`w-8 h-8 ${isDragging ? 'text-purple-600' : 'text-pink-500'} transition-colors duration-300`} />
             </div>
+            <p className={`text-lg font-medium mb-2 ${isDragging ? 'text-purple-600' : 'text-pink-600'} transition-colors duration-300`}>
+              {isDragging ? '放開以上傳照片' : '點擊或拖曳照片至此'}
+            </p>
+            <p className="text-sm text-gray-500">
+              支援 JPG、PNG 格式
+            </p>
           </div>
-        ) : (
-          <>
-            <User className="mx-auto mb-4 text-gray-400" size={48} />
-            <h3 className="text-lg font-medium text-gray-700 mb-2">點擊上傳自拍照</h3>
-            <p className="text-sm text-gray-500">建議全身照或半身照，光線充足</p>
-          </>
-        )}
-        <input
-          ref={selfieInputRef}
-          type="file"
-          accept="image/*"
-          onChange={handleSelfieUpload}
-          className="hidden"
-        />
-      </div>
+        </div>
+      ) : (
+        <div className="relative w-full max-w-md mx-auto">
+          <img
+            src={selfieImage.preview as string}
+            alt="已上傳的個人照片"
+            className="w-full h-auto rounded-xl shadow-lg"
+          />
+          <button
+            onClick={() => setSelfieImage(null)}
+            className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
     </div>
   );
 };
 
-export default Step2SelfieUpload; 
+export default SelfieUpload; 

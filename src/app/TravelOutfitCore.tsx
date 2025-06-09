@@ -1,6 +1,6 @@
 'use client';
-import React, { useState, useRef } from 'react';
-import { Sparkles } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Sparkles, Download, Share2, Play } from 'lucide-react';
 import ClothesUpload from '@/components/travel-outfit/ClothesUpload';
 import SelfieUpload from '@/components/travel-outfit/SelfieUpload';
 import GeneratePrepare from '@/components/travel-outfit/GeneratePrepare';
@@ -8,6 +8,7 @@ import GenerateResult from '@/components/travel-outfit/GenerateResult';
 import GoogleMapSearch from '@/components/travel-outfit/GoogleMapSearch';
 import PexelsSearch from '@/components/travel-outfit/PexelsSearch';
 import LocationPhotoSelector from '@/components/travel-outfit/LocationPhotoSelector';
+import StepNavigator from '@/components/travel-outfit/StepNavigator';
 
 type UploadedCloth = {
   id: number;
@@ -35,6 +36,13 @@ interface GeneratedContent {
 }
 
 const TravelOutfitCore = () => {
+  // 工具函式：fetch public file as File
+  async function fetchPublicFileAsFile(url: string, name: string, type?: string) {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    return new File([blob], name, { type: type || blob.type });
+  }
+
   const [uploadedClothes, setUploadedClothes] = useState<UploadedCloth[]>([]);
   const [selfieImage, setSelfieImage] = useState<SelfieImage | null>(null);
   const [selectedDestination, setSelectedDestination] = useState<
@@ -70,11 +78,52 @@ const TravelOutfitCore = () => {
 
   // 新增本地範例地點照片
   const localTokyoPhotos = [
-    { url: '/tokyo.jpeg', alt: '東京範例1', id: 'tokyo' },
-    { url: '/tokyo-1.jpeg', alt: '東京範例2', id: 'tokyo-1' },
-    { url: '/tokyo-2.jpeg', alt: '東京範例3', id: 'tokyo-2' },
+    { url: '/tokyo.jpeg', alt: '東京範例', id: 'tokyo' }
   ];
   const [useLocalTokyo, setUseLocalTokyo] = useState(false);
+
+  // Add currentStep state
+  const [currentStep, setCurrentStep] = useState(1);
+
+  // Define steps
+  const steps = [
+    { number: 1, title: '上傳衣服' },
+    { number: 2, title: '上傳個人照片' },
+    { number: 3, title: '選擇地點' },
+    { number: 4, title: '生成穿搭圖片' },
+  ];
+
+  // Step refs for content sections
+  const stepRefs = {
+    clothes: useRef<HTMLDivElement>(null),
+    selfie: useRef<HTMLDivElement>(null),
+    destination: useRef<HTMLDivElement>(null),
+    generate: useRef<HTMLDivElement>(null)
+  };
+
+  // Add useEffect to track step progress
+  useEffect(() => {
+    // Step 1 -> 2: When clothes are uploaded
+    if (uploadedClothes.length > 0 && currentStep === 1) {
+      setCurrentStep(2);
+    }
+    // Step 2 -> 3: When selfie is uploaded
+    if (selfieImage && currentStep === 2) {
+      setCurrentStep(3);
+    }
+    // Step 3 -> 4: When destination is selected
+    if (selectedDestination && currentStep === 3) {
+      setCurrentStep(4);
+    }
+    // Handle going backwards
+    if (!uploadedClothes.length) {
+      setCurrentStep(1);
+    } else if (!selfieImage && currentStep > 2) {
+      setCurrentStep(2);
+    } else if (!selectedDestination && currentStep > 3) {
+      setCurrentStep(3);
+    }
+  }, [uploadedClothes, selfieImage, selectedDestination, currentStep]);
 
   const generateTravelContent = async () => {
     setIsGenerating(true);
@@ -171,6 +220,7 @@ const TravelOutfitCore = () => {
     setSelfieImage(null);
     setSelectedDestination(null);
     setGeneratedContent(null);
+    setCurrentStep(1); // Reset step to 1
   };
 
   // 統一處理 setSelectedDestination，避免型別混淆
@@ -187,6 +237,38 @@ const TravelOutfitCore = () => {
     );
   };
 
+  // Handle step navigation and scrolling
+  const handleNextStep = (nextStep: number) => {
+    setCurrentStep(nextStep);
+    
+    // Use requestAnimationFrame to ensure the DOM has updated
+    requestAnimationFrame(() => {
+      // Get the corresponding ref based on the next step
+      const targetRef = (() => {
+        switch (nextStep) {
+          case 2:
+            return stepRefs.selfie;
+          case 3:
+            return stepRefs.destination;
+          case 4:
+            return stepRefs.generate;
+          default:
+            return stepRefs.clothes;
+        }
+      })();
+
+      // Calculate offset to account for sticky header
+      const headerOffset = 120; // Updated to match our scroll-mt-30 (120px)
+      const elementPosition = targetRef.current?.getBoundingClientRect().top;
+      const offsetPosition = elementPosition ? elementPosition + window.pageYOffset - headerOffset : 0;
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      });
+    });
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50">
       {/* Header */}
@@ -198,8 +280,10 @@ const TravelOutfitCore = () => {
                 <Sparkles className="text-white" size={24} />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-800">旅行穿搭助手</h1>
-                <p className="text-sm text-gray-500">4步生成專屬旅遊穿搭照片</p>
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-pink-500 to-purple-600 bg-clip-text text-transparent">
+                  AI 旅遊穿搭規劃
+                </h1>
+                <p className="text-gray-600">上傳衣服照片，讓 AI 為你規劃完美旅遊穿搭</p>
               </div>
             </div>
           </div>
@@ -207,183 +291,229 @@ const TravelOutfitCore = () => {
       </header>
 
       {/* Main Content */}
-      <main className="mx-auto px-4 py-8 max-w-2xl">
-        {/* 步驟1：衣服上傳 */}
-        <div ref={clothesRef} className="mb-16">
-          <ClothesUpload
-            uploadedClothes={uploadedClothes}
-            setUploadedClothes={setUploadedClothes}
-          />
-          <div className="flex justify-center mt-8">
-            <button
-              onClick={() => scrollToRef(selfieRef)}
-              className="bg-gradient-to-r from-pink-500 to-purple-600 text-white px-8 py-3 rounded-lg hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={uploadedClothes.length === 0}
-            >
-              下一步：上傳自拍照
-            </button>
-          </div>
-        </div>
+      <main className="container mx-auto px-4">
+        {/* Step Navigator */}
+        <StepNavigator currentStep={currentStep} steps={steps} />
 
-        {/* 步驟2：自拍上傳 */}
-        <div ref={selfieRef} className="mb-16">
-          <SelfieUpload
-            selfieImage={selfieImage}
-            setSelfieImage={setSelfieImage}
-          />
-          <div className="flex justify-center mt-8">
-            <button
-              onClick={() => scrollToRef(destinationRef)}
-              className="bg-gradient-to-r from-pink-500 to-purple-600 text-white px-8 py-3 rounded-lg hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={!selfieImage}
-            >
-              下一步：選擇目的地
-            </button>
-          </div>
-        </div>
+        {/* Content wrapper with proper top spacing */}
+        <div className="pt-8">
+          {/* Step 1: Upload Clothes */}
+          <div 
+            ref={stepRefs.clothes}
+            className="relative pb-16 mb-16 border-b-2 border-gray-200 before:absolute before:bottom-0 before:left-1/2 before:-translate-x-1/2 before:w-32 before:h-1 before:bg-gradient-to-r before:from-pink-200 before:via-purple-200 before:to-pink-200 before:rounded-full scroll-mt-30"
+          >
+            <ClothesUpload
+              uploadedClothes={uploadedClothes}
+              setUploadedClothes={setUploadedClothes}
+            />
+            {uploadedClothes.length === 0 && (
+              <div className="flex justify-center gap-4 mt-4 mb-8">
+                <button
+                  className="bg-white border border-gray-200 text-gray-600 px-4 py-2 rounded-lg hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700 transition-all cursor-pointer text-sm"
+                  onClick={async () => {
+                    // 清空現有的衣服
+                    setUploadedClothes([]);
+                    
+                    // 加載範例衣服照片
+                    const exampleClothes = [
+                      { url: '/clothes.jpeg', name: '範例衣服1' },
+                      { url: '/pants.jpg', name: '範例褲子' },
+                      { url: '/hat.jpeg', name: '範例帽子' },
+                      { url: '/necklance.webp', name: '範例配飾' }
+                    ];
 
-        {/* 步驟3：目的地選擇 */}
-        <div ref={destinationRef} className="mb-16">
-          <div className="text-center mb-8">
-            <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-4">目的地規劃</h2>
-            <p className="text-gray-600">輸入目的地，搜尋並選擇代表照片</p>
-            <div className="flex justify-center gap-4 mt-4">
+                    // 依序載入每張範例照片
+                    for (const cloth of exampleClothes) {
+                      const file = await fetchPublicFileAsFile(cloth.url, cloth.name, 'image/jpeg');
+                      const reader = new FileReader();
+                      reader.onload = (e) => {
+                        setUploadedClothes(prev => [...prev, {
+                          id: Date.now() + Math.random(),
+                          file,
+                          preview: e.target?.result || null,
+                          name: cloth.name
+                        }]);
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                >
+                  使用範例衣服
+                </button>
+              </div>
+            )}
+            <div className="flex justify-center mt-8">
               <button
-                className="bg-gray-200 px-4 py-2 rounded-lg"
-                onClick={async () => {
-                  if (destinationTab === 'pexels') {
-                    setUseLocalTokyo(true);
-                    setDestinationResult(null);
-                    setSelectedPhoto('/tokyo.jpeg');
-                    setSelectedDestination({
-                      name: '東京範例',
-                      address: '',
-                      image: '/tokyo.jpeg',
-                      mapUrl: '',
-                    });
-                  } else if (destinationTab === 'google') {
-                    setGoogleSearchInput('東京鐵塔');
-                    setTimeout(() => {
-                      const input = document.querySelector('input[placeholder^="搜尋地點"]') as HTMLInputElement;
-                      if (input) {
-                        const event = new KeyboardEvent('keydown', { key: 'Enter' });
-                        input.dispatchEvent(event);
-                      }
-                    }, 100);
-                  }
-                }}
+                onClick={() => handleNextStep(2)}
+                className="bg-gradient-to-r from-pink-500 to-purple-600 text-white px-8 py-3 rounded-lg hover:shadow-lg hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                disabled={uploadedClothes.length === 0}
               >
-                一鍵帶入範例：東京本地照片
+                確認
               </button>
             </div>
           </div>
-          <div className="flex mb-6 border-b">
-            <button
-              className={`px-6 py-2 font-bold ${destinationTab === 'pexels' ? 'border-b-2 border-purple-500 text-purple-700' : 'text-gray-500'}`}
-              onClick={() => setDestinationTab('pexels')}
-            >
-              Pexels 圖片搜尋
-            </button>
-            <button
-              className={`px-6 py-2 font-bold ${destinationTab === 'google' ? 'border-b-2 border-blue-500 text-blue-700' : 'text-gray-500'}`}
-              onClick={() => setDestinationTab('google')}
-            >
-              Google Map
-            </button>
-          </div>
-          {destinationTab === 'pexels' && (
-            useLocalTokyo ? (
-              <LocationPhotoSelector
-                photos={localTokyoPhotos}
-                selectedPhoto={selectedPhoto}
-                onSelect={(url) => {
-                  setSelectedPhoto(url);
-                  setSelectedDestination({
-                    name: '東京範例',
-                    address: '',
-                    image: url,
-                    mapUrl: '',
-                  });
-                }}
-                className="grid-cols-3"
-              />
-            ) : (
-              <PexelsSearch
-                result={destinationResult && destinationResult.images ? {
-                  photos: destinationResult.images.map((url, idx) => ({ src: { original: url, medium: url }, id: idx }))
-                } : null}
-                setResult={(val) => {
-                  if (val && 'photos' in val) {
-                    setDestinationResult({
-                      name: '',
-                      address: '',
-                      map_url: '',
-                      images: val.photos.map((p) => p.src.original)
-                    });
-                  } else {
-                    setDestinationResult(null);
-                  }
-                }}
-                selectedPhoto={selectedPhoto}
-                setSelectedPhoto={(photo) => setSelectedPhoto(photo ?? '')}
-                setSelectedDestination={handleSetSelectedDestination}
-              />
-            )
-          )}
-          {destinationTab === 'google' && (
-            <GoogleMapSearch
-              googleSearchInput={googleSearchInput}
-              setGoogleSearchInput={setGoogleSearchInput}
-              googleSearchLoading={googleSearchLoading}
-              setGoogleSearchLoading={setGoogleSearchLoading}
-              googleSearchError={googleSearchError}
-              setGoogleSearchError={setGoogleSearchError}
-              googlePlacePhotos={googlePlacePhotos}
-              setGooglePlacePhotos={setGooglePlacePhotos}
-              googleSelectedPhoto={googleSelectedPhoto}
-              setGoogleSelectedPhoto={setGoogleSelectedPhoto}
-              googlePlaceInfo={googlePlaceInfo}
-              setGooglePlaceInfo={setGooglePlaceInfo}
-              googleMapCenter={googleMapCenter}
-              setGoogleMapCenter={setGoogleMapCenter}
-              googleMarkerPos={googleMarkerPos}
-              setGoogleMarkerPos={setGoogleMarkerPos}
-              googleMapZoom={googleMapZoom}
-              setGoogleMapZoom={setGoogleMapZoom}
-              googleModalPhoto={googleModalPhoto}
-              setGoogleModalPhoto={setGoogleModalPhoto}
-              setSelectedDestination={setSelectedDestination}
-            />
-          )}
-          <div className="flex justify-center mt-8">
-            <button
-              onClick={() => scrollToRef(generateRef)}
-              className="bg-gradient-to-r from-pink-500 to-purple-600 text-white px-8 py-3 rounded-lg hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={!selectedDestination}
-            >
-              下一步：生成穿搭照片
-            </button>
-          </div>
-        </div>
 
-        {/* 步驟4：生成結果 */}
-        <div ref={generateRef} className="mb-16">
-          <GeneratePrepare
-            uploadedClothes={uploadedClothes}
-            selfieImage={selfieImage}
-            selectedDestination={selectedDestination}
-            aiProvider={aiProvider}
-            setAiProvider={setAiProvider}
-            isGenerating={isGenerating}
-            generateTravelContent={generateTravelContent}
-          />
-          <GenerateResult
-            generatedContent={generatedContent}
-            selectedDestination={selectedDestination}
-            handleDownloadImage={handleDownloadImage}
-            generateTravelContent={generateTravelContent}
-            resetAll={resetAll}
-          />
+          {/* Step 2: Upload Selfie */}
+          <div 
+            ref={stepRefs.selfie}
+            className="relative pb-16 mb-16 border-b-2 border-gray-200 before:absolute before:bottom-0 before:left-1/2 before:-translate-x-1/2 before:w-32 before:h-1 before:bg-gradient-to-r before:from-pink-200 before:via-purple-200 before:to-pink-200 before:rounded-full scroll-mt-30"
+          >
+            <SelfieUpload
+              selfieImage={selfieImage}
+              setSelfieImage={setSelfieImage}
+            />
+            {!selfieImage && (
+              <div className="flex justify-center gap-4 mt-4 mb-8">
+                <button
+                  className="bg-white border border-gray-200 text-gray-600 px-4 py-2 rounded-lg hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700 transition-all cursor-pointer text-sm"
+                  onClick={async () => {
+                    // 清空現有的自拍照
+                    setSelfieImage(null);
+                    
+                    // 加載範例自拍照
+                    const file = await fetchPublicFileAsFile('/sample-girl.jpeg', '範例自拍照.jpg', 'image/jpeg');
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                      setSelfieImage({
+                        file,
+                        preview: e.target?.result || null
+                      });
+                    };
+                    reader.readAsDataURL(file);
+                  }}
+                >
+                  使用範例個人照
+                </button>
+              </div>
+            )}
+            <div className="flex justify-center mt-8">
+              <button
+                onClick={() => handleNextStep(3)}
+                className="bg-gradient-to-r from-pink-500 to-purple-600 text-white px-8 py-3 rounded-lg hover:shadow-lg hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                disabled={!selfieImage}
+              >
+                確認
+              </button>
+            </div>
+          </div>
+
+          {/* Step 3: Destination Selection */}
+          <div 
+            ref={stepRefs.destination}
+            className="relative pb-16 mb-16 border-b-2 border-gray-200 before:absolute before:bottom-0 before:left-1/2 before:-translate-x-1/2 before:w-32 before:h-1 before:bg-gradient-to-r before:from-pink-200 before:via-purple-200 before:to-pink-200 before:rounded-full scroll-mt-30"
+          >
+            <div className="text-center mb-8">
+              <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-4">目的地規劃</h2>
+              <p className="text-gray-600">輸入目的地，搜尋並選擇代表照片</p>
+            </div>
+            <div className="flex mb-6 border-b">
+              <button
+                className={`px-6 py-2 font-bold cursor-pointer ${destinationTab === 'pexels' ? 'border-b-2 border-purple-500 text-purple-700 hover:text-purple-900' : 'text-gray-500 hover:text-gray-700'} transition-all`}
+                onClick={() => setDestinationTab('pexels')}
+              >
+                圖庫搜尋
+              </button>
+              <button
+                className={`px-6 py-2 font-bold cursor-pointer ${destinationTab === 'google' ? 'border-b-2 border-blue-500 text-blue-700 hover:text-blue-900' : 'text-gray-500 hover:text-gray-700'} transition-all`}
+                onClick={() => setDestinationTab('google')}
+              >
+                Google Map
+              </button>
+            </div>
+            {destinationTab === 'pexels' && (
+              useLocalTokyo ? (
+                <LocationPhotoSelector
+                  photos={localTokyoPhotos}
+                  selectedPhoto={selectedPhoto}
+                  onSelect={(url) => {
+                    setSelectedPhoto(url);
+                    setSelectedDestination({
+                      name: '東京範例',
+                      address: '',
+                      image: url,
+                      mapUrl: '',
+                    });
+                  }}
+                  className="grid-cols-3"
+                />
+              ) : (
+                <PexelsSearch
+                  result={destinationResult && destinationResult.images ? {
+                    photos: destinationResult.images.map((url, idx) => ({ src: { original: url, medium: url }, id: idx }))
+                  } : null}
+                  setResult={(val) => {
+                    if (val && 'photos' in val) {
+                      setDestinationResult({
+                        name: '',
+                        address: '',
+                        map_url: '',
+                        images: val.photos.map((p) => p.src.original)
+                      });
+                    } else {
+                      setDestinationResult(null);
+                    }
+                  }}
+                  selectedPhoto={selectedPhoto}
+                  setSelectedPhoto={(photo) => setSelectedPhoto(photo ?? '')}
+                  setSelectedDestination={handleSetSelectedDestination}
+                />
+              )
+            )}
+            {destinationTab === 'google' && (
+              <GoogleMapSearch
+                googleSearchInput={googleSearchInput}
+                setGoogleSearchInput={setGoogleSearchInput}
+                googleSearchLoading={googleSearchLoading}
+                setGoogleSearchLoading={setGoogleSearchLoading}
+                googleSearchError={googleSearchError}
+                setGoogleSearchError={setGoogleSearchError}
+                googlePlacePhotos={googlePlacePhotos}
+                setGooglePlacePhotos={setGooglePlacePhotos}
+                googleSelectedPhoto={googleSelectedPhoto}
+                setGoogleSelectedPhoto={setGoogleSelectedPhoto}
+                googlePlaceInfo={googlePlaceInfo}
+                setGooglePlaceInfo={setGooglePlaceInfo}
+                googleMapCenter={googleMapCenter}
+                setGoogleMapCenter={setGoogleMapCenter}
+                googleMarkerPos={googleMarkerPos}
+                setGoogleMarkerPos={setGoogleMarkerPos}
+                googleMapZoom={googleMapZoom}
+                setGoogleMapZoom={setGoogleMapZoom}
+                googleModalPhoto={googleModalPhoto}
+                setGoogleModalPhoto={setGoogleModalPhoto}
+                setSelectedDestination={setSelectedDestination}
+              />
+            )}
+            <div className="flex justify-center mt-8">
+              <button
+                onClick={() => handleNextStep(4)}
+                className="bg-gradient-to-r from-pink-500 to-purple-600 text-white px-8 py-3 rounded-lg hover:shadow-lg hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                disabled={!selectedDestination}
+              >
+                確認
+              </button>
+            </div>
+          </div>
+
+          {/* Step 4: Generate Result - No bottom border for the last step */}
+          <div ref={stepRefs.generate} className="mb-16 scroll-mt-30">
+            <GeneratePrepare
+              uploadedClothes={uploadedClothes}
+              selfieImage={selfieImage}
+              selectedDestination={selectedDestination}
+              aiProvider={aiProvider}
+              setAiProvider={setAiProvider}
+              isGenerating={isGenerating}
+              generateTravelContent={generateTravelContent}
+            />
+            <GenerateResult
+              generatedContent={generatedContent}
+              selectedDestination={selectedDestination}
+              handleDownloadImage={handleDownloadImage}
+              generateTravelContent={generateTravelContent}
+              resetAll={resetAll}
+            />
+          </div>
         </div>
       </main>
 

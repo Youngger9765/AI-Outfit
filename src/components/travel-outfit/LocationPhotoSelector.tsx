@@ -15,8 +15,16 @@ const LocationPhotoSelector: React.FC<LocationPhotoSelectorProps> = ({
   onSelect,
   className = '',
 }) => {
+  // 根據照片數量決定網格布局
+  const getGridClass = (photoCount: number) => {
+    if (photoCount === 1) return 'grid-cols-1';
+    if (photoCount === 2) return 'grid-cols-2';
+    if (photoCount <= 4) return 'grid-cols-2';
+    return 'grid-cols-3';
+  };
+
   return (
-    <div className={`grid grid-cols-2 gap-4 ${className}`}>
+    <div className={`grid gap-4 ${getGridClass(photos.length)} ${className}`}>
       {photos.map((photo, idx) => (
         <div
           key={photo.id || photo.url || idx}
