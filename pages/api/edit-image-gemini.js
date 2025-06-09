@@ -1,28 +1,24 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 import { GoogleGenAI } from '@google/genai';
-import path from 'path';
 const formidable = require("formidable");
 import fs from 'fs';
+import path from 'path';
+import { Storage } from '@google-cloud/storage';
 
-// 取得 service account JSON 並寫入 /tmp
-const tmpPath = path.join('/tmp', 'gcp-key.json');
-const serviceAccountJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
-if (!fs.existsSync(tmpPath) && serviceAccountJson) {
-  fs.writeFileSync(tmpPath, serviceAccountJson);
+// 寫入暫存檔案並設 GOOGLE_APPLICATION_CREDENTIALS
+if (
+  process.env.GOOGLE_SERVICE_ACCOUNT_JSON &&
+  process.env.GOOGLE_SERVICE_ACCOUNT_JSON.trim().startsWith('{')
+) {
+  const keyPath = path.resolve('/tmp/.google-service-account.json');
+  fs.writeFileSync(keyPath, process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
+  process.env.GOOGLE_APPLICATION_CREDENTIALS = keyPath;
 }
 
-// 設定環境變數
-process.env.GOOGLE_APPLICATION_CREDENTIALS = tmpPath;
-
-// GCS Storage 初始化
-import { Storage } from '@google-cloud/storage';
-const storage = new Storage();
-
-// GoogleGenAI 改用 Vertex AI 初始化
 const ai = new GoogleGenAI({
-  vertex: true,
-  projectId: JSON.parse(serviceAccountJson).project_id,
-  location: 'us-central1'
+  vertexai: true,
+  project: 'ai-outfit-462213',
+  location: 'global',
 });
 const model = 'gemini-2.0-flash-preview-image-generation';
 
@@ -35,7 +31,11 @@ const generationConfig = {
     { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'OFF' },
     { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'OFF' },
     { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'OFF' },
-    { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'OFF' }
+    { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'OFF' },
+    { category: 'HARM_CATEGORY_IMAGE_HATE', threshold: 'OFF' },
+    { category: 'HARM_CATEGORY_IMAGE_DANGEROUS_CONTENT', threshold: 'OFF' },
+    { category: 'HARM_CATEGORY_IMAGE_HARASSMENT', threshold: 'OFF' },
+    { category: 'HARM_CATEGORY_IMAGE_SEXUALLY_EXPLICIT', threshold: 'OFF' },
   ],
 };
 
@@ -54,6 +54,7 @@ const parseForm = (req) =>
 
 // GCS 設定
 const bucketName = 'user_upload_photos';
+const storage = new Storage();
 
 async function uploadToGCS(localFilePath, destFileName, mimetype) {
   await storage.bucket(bucketName).upload(localFilePath, {
@@ -70,7 +71,6 @@ export default async function handler(req, res) {
     res.status(405).json({ error: 'Method not allowed' });
     return;
   }
-  let uploadedFiles = [];
   try {
     const { fields, files } = await parseForm(req);
     let prompt = fields.prompt;
@@ -116,7 +116,8 @@ export default async function handler(req, res) {
       }
     });
 
-    // 上傳到 GCS 並補上 fileUri，同時記錄 destFileName
+    // 上傳到 GCS 並補上 fileUri
+    const uploadedFiles = [];
     if (selfiePart) {
       selfiePart.fileData.fileUri = await uploadToGCS(selfiePart.localFilePath, selfiePart.destFileName, selfiePart.fileData.mimeType);
       uploadedFiles.push(selfiePart.destFileName);
@@ -130,29 +131,26 @@ export default async function handler(req, res) {
       uploadedFiles.push(locationPart.destFileName);
     }
 
-    // 組合多 part prompt，改為 base64 inlineData
+    // 組合多 part prompt
     const promptParts = [];
     if (selfiePart) {
-      const selfieBuffer = fs.readFileSync(selfiePart.localFilePath);
-      promptParts.push({ text: "This is the user's selfie. Please use this face and body as the main subject:" });
-      promptParts.push({ inlineData: { data: selfieBuffer.toString('base64'), mimeType: selfiePart.fileData.mimeType } });
+      promptParts.push({ text: '這是使用者的自拍照，請用這張臉和身形作為主角：' });
+      promptParts.push({ fileData: selfiePart.fileData });
     }
     if (clothesParts.length > 0) {
-      promptParts.push({ text: "These are the clothes and accessories the user wants to wear. Please dress the main subject naturally with these items:" });
+      promptParts.push({ text: '以下是使用者想要穿搭的衣服與配件照片，請將這些單品自然地穿在主角身上：' });
       for (let part of clothesParts) {
-        const clothBuffer = fs.readFileSync(part.localFilePath);
-        promptParts.push({ inlineData: { data: clothBuffer.toString('base64'), mimeType: part.fileData.mimeType } });
+        promptParts.push({ fileData: part.fileData });
       }
     }
     if (locationPart) {
-      const locationBuffer = fs.readFileSync(locationPart.localFilePath);
-      promptParts.push({ text: "This is a representative photo of the travel destination. Please naturally composite the main subject into this scene:" });
-      promptParts.push({ inlineData: { data: locationBuffer.toString('base64'), mimeType: locationPart.fileData.mimeType } });
+      promptParts.push({ text: '這是旅遊地點的代表照片，請將主角自然地合成在這個場景中：' });
+      promptParts.push({ fileData: locationPart.fileData });
     }
-    promptParts.push({ text: `
-Combine the provided face and outfit onto a realistic human figure and place them naturally at the given location. 
-Make sure the composition shows the full body (head to feet) clearly, centered in the frame, with natural proportions and lighting that matches the background. 
-The final image should look like an authentic scene at this location.` });
+    promptParts.push({ text: `\n
+      Combine the provided face and outfit onto a realistic human figure and place them naturally at the given location. 
+      Make sure the composition shows the full body (head to feet) clearly, centered in the frame, with natural proportions and lighting that matches the background. 
+      The final image should look like an authentic scene at this location.` });
 
     // Debug log: 檢查 promptParts
     console.log('promptParts:', promptParts);
@@ -183,10 +181,12 @@ The final image should look like an authentic scene at this location.` });
   } catch (err) {
     res.status(500).json({ error: String(err) });
   } finally {
-    // 新增：AI 生成完畢後，刪除剛剛上傳的 GCS 檔案
+    // 刪除所有剛剛上傳到 GCS 的圖片
     await Promise.all(
       uploadedFiles.map(filename =>
-        storage.bucket(bucketName).file(filename).delete().catch(() => {})
+        storage.bucket(bucketName).file(filename).delete().catch((err) => {
+          console.error('刪除檔案失敗：', filename, err);
+        })
       )
     );
   }
