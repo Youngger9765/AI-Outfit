@@ -6,8 +6,8 @@ import SelfieUpload from '@/components/travel-outfit/SelfieUpload';
 import GeneratePrepare from '@/components/travel-outfit/GeneratePrepare';
 import GenerateResult from '@/components/travel-outfit/GenerateResult';
 import GoogleMapSearch from '@/components/travel-outfit/GoogleMapSearch';
-import LocationPhotoSelector from '@/components/travel-outfit/LocationPhotoSelector';
 import StepNavigator from '@/components/travel-outfit/StepNavigator';
+import PexelsSearch from '@/components/travel-outfit/PexelsSearch';
 
 type UploadedCloth = {
   id: number;
@@ -66,11 +66,6 @@ const TravelOutfitCore = () => {
   const [googleMarkerPos, setGoogleMarkerPos] = useState({ lat: 35.6895, lng: 139.6917 });
   const [googleMapZoom, setGoogleMapZoom] = useState(14);
   const [googleModalPhoto, setGoogleModalPhoto] = useState<string | null>(null);
-
-  // 新增本地範例地點照片
-  const localTokyoPhotos = [
-    { url: '/tokyo.jpeg', alt: '東京範例', id: 'tokyo' }
-  ];
 
   // Add currentStep state
   const [currentStep, setCurrentStep] = useState(1);
@@ -239,6 +234,8 @@ const TravelOutfitCore = () => {
     });
   };
 
+  const [pexelsResult, setPexelsResult] = useState<{ photos: { src: { original: string; medium: string }; alt?: string; id?: string | number }[] } | null>(null);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50">
       {/* Header */}
@@ -391,19 +388,12 @@ const TravelOutfitCore = () => {
               </button>
             </div>
             {destinationTab === 'pexels' && (
-              <LocationPhotoSelector
-                photos={localTokyoPhotos}
+              <PexelsSearch
+                result={pexelsResult}
+                setResult={setPexelsResult}
                 selectedPhoto={selectedPhoto}
-                onSelect={(url) => {
-                  setSelectedPhoto(url);
-                  setSelectedDestination({
-                    name: '東京範例',
-                    address: '',
-                    image: url,
-                    mapUrl: '',
-                  });
-                }}
-                className="grid-cols-3"
+                setSelectedPhoto={(photo) => setSelectedPhoto(photo ?? '')}
+                setSelectedDestination={(destination) => setSelectedDestination(destination ? { ...destination, mapUrl: destination.mapUrl ?? '' } : null)}
               />
             )}
             {destinationTab === 'google' && (
