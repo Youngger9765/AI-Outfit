@@ -64,7 +64,7 @@ const Step4Prepare: React.FC<Step4PrepareProps> = ({
           <h3 className="font-bold text-gray-700 mb-2">你已選擇的照片</h3>
           <div className="grid grid-cols-3 gap-4 items-start">
             <div>
-              <div className="text-sm text-gray-500 mb-1">衣服照片</div>
+              <div className="text-sm text-gray-500 mb-1">{uploadedClothes.length} 件衣服</div>
               <div className="flex flex-wrap gap-2">
                 {uploadedClothes.map((item, idx) => (
                   // FileReader 產生的 data URL 只能用 <img>，加 eslint disable
@@ -74,7 +74,7 @@ const Step4Prepare: React.FC<Step4PrepareProps> = ({
               </div>
             </div>
             <div>
-              <div className="text-sm text-gray-500 mb-1">自拍照</div>
+              <div className="text-sm text-gray-500 mb-1">{selfieImage ? '1 張自拍照' : '0 張自拍照'}</div>
               {selfieImage && (
                 // FileReader 產生的 data URL 只能用 <img>，加 eslint disable
                 // eslint-disable-next-line @next/next/no-img-element
@@ -86,64 +86,31 @@ const Step4Prepare: React.FC<Step4PrepareProps> = ({
               {selectedDestination?.image && (
                 <div>
                   <Image src={selectedDestination.image} alt="地點代表照片" width={64} height={64} className="mx-auto w-16 h-16 object-cover rounded-md border mb-1" unoptimized />
-                  <div className="text-xs text-gray-600 truncate max-w-[64px]">{selectedDestination.name}</div>
                 </div>
               )}
             </div>
           </div>
         </div>
-        <div className="grid grid-cols-3 gap-4 mb-6">
+        {/* 生成按鈕與 loading 狀態 */}
+        {!isGenerating && (
+          <button
+            onClick={generateTravelContent}
+            className="w-full md:w-auto bg-gradient-to-r from-pink-500 to-purple-600 text-white px-12 py-4 rounded-lg hover:shadow-lg transition-all flex items-center justify-center gap-3 mx-auto text-lg font-medium"
+          >
+            <Sparkles size={24} />
+            揭曉我的獨家旅程穿搭
+          </button>
+        )}
+        {isGenerating && (
           <div className="text-center">
-            <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-2">
-              <Upload className="text-purple-600" size={24} />
+            <div className="w-24 h-24 mx-auto mb-6">
+              <div className="w-24 h-24 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin"></div>
             </div>
-            <p className="text-sm text-gray-600">
-              {uploadedClothes.length} 件衣服
-            </p>
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">AI 正在生成你的旅遊穿搭照片...</h2>
+            <p className="text-gray-600 mb-4">分析你的衣服、身形和目的地風格</p>
           </div>
-          <div className="text-center">
-            <div className="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-2">
-              <User className="text-pink-600" size={24} />
-            </div>
-            <p className="text-sm text-gray-600">
-              1 張自拍照
-            </p>
-          </div>
-          <div className="text-center">
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2">
-              <MapPin className="text-blue-600" size={24} />
-            </div>
-            <p className="text-sm text-gray-600">
-              {selectedDestination && selectedDestination.name}
-            </p>
-          </div>
-        </div>
-        <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-4">
-          <h3 className="font-bold text-gray-800 mb-2">即將為你生成：</h3>
-          <p className="text-gray-600">
-            適合在{selectedDestination && selectedDestination.name}穿著的旅遊穿搭照片
-          </p>
-        </div>
+        )}
       </div>
-      {/* 生成按鈕與 loading 狀態 */}
-      {!isGenerating && (
-        <button
-          onClick={generateTravelContent}
-          className="w-full md:w-auto bg-gradient-to-r from-pink-500 to-purple-600 text-white px-12 py-4 rounded-lg hover:shadow-lg transition-all flex items-center gap-3 mx-auto text-lg font-medium"
-        >
-          <Sparkles size={24} />
-          開始 AI 生成
-        </button>
-      )}
-      {isGenerating && (
-        <div className="text-center">
-          <div className="w-24 h-24 mx-auto mb-6">
-            <div className="w-24 h-24 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin"></div>
-          </div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">AI 正在生成你的旅遊穿搭照片...</h2>
-          <p className="text-gray-600 mb-4">分析你的衣服、身形和目的地風格</p>
-        </div>
-      )}
     </div>
   );
 };

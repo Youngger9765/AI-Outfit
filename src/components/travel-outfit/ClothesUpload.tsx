@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { Camera, Check } from 'lucide-react';
 
 type UploadedCloth = {
@@ -25,81 +25,133 @@ const Step1ClothesUpload: React.FC<Step1ClothesUploadProps> = ({
   setUploadedClothes
 }) => {
   const clothesInputRef = useRef<HTMLInputElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
-  const handleClothesUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (!event.target.files) return;
-    const files = Array.from(event.target.files);
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = Array.from(e.dataTransfer.files);
     files.forEach(file => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setUploadedClothes(prev => [
-          ...prev,
-          {
-            id: Date.now() + Math.random(),
-            file: file,
-            preview: e.target?.result || null,
-            name: file.name
-          }
-        ]);
-      };
-      reader.readAsDataURL(file);
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          setUploadedClothes(prev => [
+            ...prev,
+            {
+              id: Date.now() + Math.random(),
+              file,
+              preview: e.target?.result || null,
+              name: file.name
+            }
+          ]);
+        };
+        reader.readAsDataURL(file);
+      }
     });
   };
 
+  const handleClothesUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      Array.from(e.target.files).forEach(file => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          setUploadedClothes(prev => [
+            ...prev,
+            {
+              id: Date.now() + Math.random(),
+              file,
+              preview: e.target?.result || null,
+              name: file.name
+            }
+          ]);
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+  };
+
   return (
-    <div className="mx-auto">
+    <div className="w-full">
       <div className="text-center mb-8">
         <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-4">上傳你的衣服</h2>
-        <p className="text-gray-600">拍照或選擇你想要搭配的衣服照片</p>
+        <p className="text-gray-600">請上傳背景單一、光線充足的衣物照片</p>
       </div>
-      {/* 一鍵帶入範例衣服 */}
-      <div className="flex justify-center mb-4">
-        <button
-          className="bg-gray-200 px-4 py-2 rounded-lg"
-          onClick={async () => {
-            const files = await Promise.all([
-              fetchPublicFileAsFile('/hat.jpeg', 'hat.jpeg'),
-              fetchPublicFileAsFile('/clothes.jpeg', 'clothes.jpeg'),
-              fetchPublicFileAsFile('/necklance.webp', 'necklance.webp'),
-              fetchPublicFileAsFile('/pants.jpg', 'pants.jpg'),
-            ]);
-            files.forEach(file => {
-              const reader = new FileReader();
-              reader.onload = (e) => {
-                setUploadedClothes(prev => [
-                  ...prev,
-                  {
-                    id: Date.now() + Math.random(),
-                    file,
-                    preview: e.target?.result || null,
-                    name: file.name
-                  }
-                ]);
-              };
-              reader.readAsDataURL(file);
-            });
-          }}
-        >
-          一鍵帶入範例衣服
-        </button>
-      </div>
+
+      {/* Upload Area */}
       <div 
-        className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-purple-400 transition-colors cursor-pointer"
-        onClick={() => { if (clothesInputRef.current) clothesInputRef.current.click(); }}
+        className={`
+          w-full p-8 mb-6 rounded-xl
+          border-3 border-dashed
+          transition-all duration-300 ease-in-out
+          ${isDragging 
+            ? 'border-purple-500 bg-purple-50' 
+            : 'border-pink-300 hover:border-pink-500 bg-gradient-to-br from-purple-50/30 via-pink-50/30 to-white hover:from-purple-50/50 hover:via-pink-50/50 hover:to-white'
+          }
+          cursor-pointer
+          flex flex-col items-center justify-center
+          min-h-[200px]
+          relative
+        `}
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+        onClick={() => clothesInputRef.current?.click()}
       >
-        <Camera className="mx-auto mb-4 text-gray-400" size={48} />
-        <h3 className="text-lg font-medium text-gray-700 mb-2">點擊上傳衣服照片</h3>
-        <p className="text-sm text-gray-500">支援 JPG, PNG 格式，可一次選擇多張</p>
         <input
           ref={clothesInputRef}
           type="file"
+          className="hidden"
           accept="image/*"
           multiple
           onChange={handleClothesUpload}
-          className="hidden"
         />
+        
+        <div className="text-center">
+          <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-r from-pink-500/10 to-purple-500/10 rounded-full flex items-center justify-center">
+            <svg 
+              className={`w-8 h-8 ${isDragging ? 'text-purple-600' : 'text-pink-500'} transition-colors duration-300`}
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                strokeWidth={2} 
+                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" 
+              />
+            </svg>
+          </div>
+          <p className={`text-lg font-medium mb-2 ${isDragging ? 'text-purple-600' : 'text-pink-600'} transition-colors duration-300`}>
+            {isDragging ? '放開以上傳圖片' : '點擊或拖曳圖片至此'}
+          </p>
+          <p className="text-sm text-gray-500">
+            支援 JPG、PNG 格式
+          </p>
+        </div>
       </div>
 
+      {/* Uploaded Images Preview */}
       {uploadedClothes.length > 0 && (
         <div className="mt-8 mx-auto">
           <h3 className="flex items-center justify-center text-lg font-medium text-gray-800 mb-4">已上傳的衣服 ({uploadedClothes.length})</h3>
