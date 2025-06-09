@@ -1,12 +1,11 @@
 'use client';
 import React, { useState, useRef, useEffect } from 'react';
-import { Sparkles, Download, Share2, Play } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import ClothesUpload from '@/components/travel-outfit/ClothesUpload';
 import SelfieUpload from '@/components/travel-outfit/SelfieUpload';
 import GeneratePrepare from '@/components/travel-outfit/GeneratePrepare';
 import GenerateResult from '@/components/travel-outfit/GenerateResult';
 import GoogleMapSearch from '@/components/travel-outfit/GoogleMapSearch';
-import PexelsSearch from '@/components/travel-outfit/PexelsSearch';
 import LocationPhotoSelector from '@/components/travel-outfit/LocationPhotoSelector';
 import StepNavigator from '@/components/travel-outfit/StepNavigator';
 
@@ -52,15 +51,7 @@ const TravelOutfitCore = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [aiProvider, setAiProvider] = useState<'openai' | 'gemini'>('gemini');
   
-  const clothesRef = useRef<HTMLDivElement | null>(null);
-  const selfieRef = useRef<HTMLDivElement | null>(null);
-  const destinationRef = useRef<HTMLDivElement | null>(null);
-  const generateRef = useRef<HTMLDivElement | null>(null);
-
   // 新增 Step3 相關 state
-  const [destinationResult, setDestinationResult] = useState<
-    { name: string; address: string; map_url: string; images: string[] } | null
-  >(null);
   const [selectedPhoto, setSelectedPhoto] = useState<string>('');
 
   // 新增 destinationTab 狀態
@@ -80,7 +71,6 @@ const TravelOutfitCore = () => {
   const localTokyoPhotos = [
     { url: '/tokyo.jpeg', alt: '東京範例', id: 'tokyo' }
   ];
-  const [useLocalTokyo, setUseLocalTokyo] = useState(false);
 
   // Add currentStep state
   const [currentStep, setCurrentStep] = useState(1);
@@ -209,32 +199,12 @@ const TravelOutfitCore = () => {
     }
   };
 
-  const scrollToRef = (ref: React.RefObject<HTMLDivElement | null>) => {
-    if (ref.current) {
-      ref.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  };
-
   const resetAll = () => {
     setUploadedClothes([]);
     setSelfieImage(null);
     setSelectedDestination(null);
     setGeneratedContent(null);
     setCurrentStep(1); // Reset step to 1
-  };
-
-  // 統一處理 setSelectedDestination，避免型別混淆
-  const handleSetSelectedDestination = (val: { name?: string; address?: string; image?: string; mapUrl?: string } | null) => {
-    setSelectedDestination(
-      val
-        ? {
-            name: val.name ?? '',
-            address: val.address ?? '',
-            image: val.image ?? '',
-            mapUrl: val.mapUrl ?? '',
-          }
-        : null
-    );
   };
 
   // Handle step navigation and scrolling
@@ -421,43 +391,20 @@ const TravelOutfitCore = () => {
               </button>
             </div>
             {destinationTab === 'pexels' && (
-              useLocalTokyo ? (
-                <LocationPhotoSelector
-                  photos={localTokyoPhotos}
-                  selectedPhoto={selectedPhoto}
-                  onSelect={(url) => {
-                    setSelectedPhoto(url);
-                    setSelectedDestination({
-                      name: '東京範例',
-                      address: '',
-                      image: url,
-                      mapUrl: '',
-                    });
-                  }}
-                  className="grid-cols-3"
-                />
-              ) : (
-                <PexelsSearch
-                  result={destinationResult && destinationResult.images ? {
-                    photos: destinationResult.images.map((url, idx) => ({ src: { original: url, medium: url }, id: idx }))
-                  } : null}
-                  setResult={(val) => {
-                    if (val && 'photos' in val) {
-                      setDestinationResult({
-                        name: '',
-                        address: '',
-                        map_url: '',
-                        images: val.photos.map((p) => p.src.original)
-                      });
-                    } else {
-                      setDestinationResult(null);
-                    }
-                  }}
-                  selectedPhoto={selectedPhoto}
-                  setSelectedPhoto={(photo) => setSelectedPhoto(photo ?? '')}
-                  setSelectedDestination={handleSetSelectedDestination}
-                />
-              )
+              <LocationPhotoSelector
+                photos={localTokyoPhotos}
+                selectedPhoto={selectedPhoto}
+                onSelect={(url) => {
+                  setSelectedPhoto(url);
+                  setSelectedDestination({
+                    name: '東京範例',
+                    address: '',
+                    image: url,
+                    mapUrl: '',
+                  });
+                }}
+                className="grid-cols-3"
+              />
             )}
             {destinationTab === 'google' && (
               <GoogleMapSearch

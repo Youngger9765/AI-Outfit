@@ -1,6 +1,6 @@
 import React from 'react';
 import Image from 'next/image';
-import { Sparkles, Upload, User, MapPin } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 
 interface UploadedCloth {
   id: number;

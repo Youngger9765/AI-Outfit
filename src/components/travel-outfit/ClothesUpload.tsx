@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Camera, Check } from 'lucide-react';
+import { Check } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
 
 type UploadedCloth = {
@@ -12,13 +12,6 @@ type UploadedCloth = {
 interface Step1ClothesUploadProps {
   uploadedClothes: UploadedCloth[];
   setUploadedClothes: React.Dispatch<React.SetStateAction<UploadedCloth[]>>;
-}
-
-// 工具函式：fetch public file as File
-async function fetchPublicFileAsFile(url: string, name: string, type?: string) {
-  const res = await fetch(url);
-  const blob = await res.blob();
-  return new File([blob], name, { type: type || blob.type });
 }
 
 // 圖片壓縮選項
