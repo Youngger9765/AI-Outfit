@@ -42,3 +42,7 @@ next-env.d.ts
 
 *.mdc
 .google-service-account.json
+
+# temp files
+/tmp
+tmp/

@@ -4,19 +4,25 @@ import path from 'path';
 const formidable = require("formidable");
 import fs from 'fs';
 
-// 取得 service account JSON
-const credentialString = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
-const credentialJson = credentialString ? JSON.parse(credentialString) : null;
+// 取得 service account JSON 並寫入 /tmp
+const tmpPath = path.join('/tmp', 'gcp-key.json');
+const serviceAccountJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+if (!fs.existsSync(tmpPath) && serviceAccountJson) {
+  fs.writeFileSync(tmpPath, serviceAccountJson);
+}
 
-// GCS Storage 初始化（仍用 service account json）
+// 設定環境變數
+process.env.GOOGLE_APPLICATION_CREDENTIALS = tmpPath;
+
+// GCS Storage 初始化
 import { Storage } from '@google-cloud/storage';
-const storage = credentialJson
-  ? new Storage({ projectId: credentialJson.project_id, credentials: credentialJson })
-  : new Storage();
+const storage = new Storage();
 
-// GoogleGenAI 改用 API KEY 初始化（不能同時傳 project/location）
+// GoogleGenAI 改用 Vertex AI 初始化
 const ai = new GoogleGenAI({
-  apiKey: process.env.GOOGLE_GENAI_API_KEY,
+  vertex: true,
+  projectId: JSON.parse(serviceAccountJson).project_id,
+  location: 'us-central1'
 });
 const model = 'gemini-2.0-flash-preview-image-generation';
 
