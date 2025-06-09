@@ -67,6 +67,7 @@ async function uploadToGCS(localFilePath, destFileName, mimetype) {
 }
 
 export default async function handler(req, res) {
+  const uploadedFiles = [];
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' });
     return;
@@ -117,7 +118,6 @@ export default async function handler(req, res) {
     });
 
     // 上傳到 GCS 並補上 fileUri
-    const uploadedFiles = [];
     if (selfiePart) {
       selfiePart.fileData.fileUri = await uploadToGCS(selfiePart.localFilePath, selfiePart.destFileName, selfiePart.fileData.mimeType);
       uploadedFiles.push(selfiePart.destFileName);
