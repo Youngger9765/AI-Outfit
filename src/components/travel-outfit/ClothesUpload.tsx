@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
 import { Camera, Check } from 'lucide-react';
+import imageCompression from 'browser-image-compression';
 
 type UploadedCloth = {
   id: number;
@@ -20,30 +21,59 @@ async function fetchPublicFileAsFile(url: string, name: string, type?: string) {
   return new File([blob], name, { type: type || blob.type });
 }
 
+// 圖片壓縮選項
+const compressionOptions = {
+  maxSizeMB: 1, // 最大檔案大小
+  maxWidthOrHeight: 1920, // 最大寬度或高度
+  useWebWorker: true, // 使用 Web Worker 進行壓縮
+};
+
 const Step1ClothesUpload: React.FC<Step1ClothesUploadProps> = ({
   uploadedClothes,
   setUploadedClothes
 }) => {
   const clothesInputRef = useRef<HTMLInputElement>(null);
 
-  const handleClothesUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleClothesUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!event.target.files) return;
     const files = Array.from(event.target.files);
-    files.forEach(file => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setUploadedClothes(prev => [
-          ...prev,
-          {
-            id: Date.now() + Math.random(),
-            file: file,
-            preview: e.target?.result || null,
-            name: file.name
-          }
-        ]);
-      };
-      reader.readAsDataURL(file);
-    });
+    
+    for (const file of files) {
+      try {
+        // 壓縮圖片
+        const compressedFile = await imageCompression(file, compressionOptions);
+        
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          setUploadedClothes(prev => [
+            ...prev,
+            {
+              id: Date.now() + Math.random(),
+              file: compressedFile,
+              preview: e.target?.result || null,
+              name: file.name
+            }
+          ]);
+        };
+        reader.readAsDataURL(compressedFile);
+      } catch (error) {
+        console.error('圖片壓縮失敗:', error);
+        // 如果壓縮失敗，使用原始檔案
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          setUploadedClothes(prev => [
+            ...prev,
+            {
+              id: Date.now() + Math.random(),
+              file: file,
+              preview: e.target?.result || null,
+              name: file.name
+            }
+          ]);
+        };
+        reader.readAsDataURL(file);
+      }
+    }
   };
 
   return (

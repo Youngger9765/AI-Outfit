@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
 import { User, Check } from 'lucide-react';
+import imageCompression from 'browser-image-compression';
 
 interface SelfieImage {
   file: File;
@@ -18,24 +19,47 @@ async function fetchPublicFileAsFile(url: string, name: string, type?: string) {
   return new File([blob], name, { type: type || blob.type });
 }
 
+// 圖片壓縮選項
+const compressionOptions = {
+  maxSizeMB: 1, // 最大檔案大小
+  maxWidthOrHeight: 1920, // 最大寬度或高度
+  useWebWorker: true, // 使用 Web Worker 進行壓縮
+};
+
 const Step2SelfieUpload: React.FC<Step2SelfieUploadProps> = ({
   selfieImage,
   setSelfieImage
 }) => {
   const selfieInputRef = useRef<HTMLInputElement>(null);
 
-  const handleSelfieUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSelfieUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!event.target.files) return;
     const file = event.target.files[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setSelfieImage({
-          file: file,
-          preview: e.target ? e.target.result : null
-        });
-      };
-      reader.readAsDataURL(typeof file === 'string' ? file : file);
+      try {
+        // 壓縮圖片
+        const compressedFile = await imageCompression(file, compressionOptions);
+        
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          setSelfieImage({
+            file: compressedFile,
+            preview: e.target ? e.target.result : null
+          });
+        };
+        reader.readAsDataURL(compressedFile);
+      } catch (error) {
+        console.error('圖片壓縮失敗:', error);
+        // 如果壓縮失敗，使用原始檔案
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          setSelfieImage({
+            file: file,
+            preview: e.target ? e.target.result : null
+          });
+        };
+        reader.readAsDataURL(file);
+      }
     }
   };
 
