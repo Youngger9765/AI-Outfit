@@ -106,47 +106,65 @@ const GoogleMapSearch: React.FC<GoogleMapSearchProps> = ({
     setGooglePlaceInfo(null);
     try {
       const res = await fetch(
-        `https://places.googleapis.com/v1/places:searchText?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`,
+        `https://places.googleapis.com/v1/places:searchText`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-Goog-FieldMask': '*'
+            'X-Goog-Api-Key': process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+            'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.photos,places.googleMapsUri'
           },
           body: JSON.stringify({
             textQuery: googleSearchInput,
             languageCode: 'zh-TW',
-            regionCode: 'JP'
+            maxResultCount: 1
           })
         }
       );
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => null);
+        console.error('Google Places API Error:', errorData);
+        throw new Error(errorData?.error?.message || '搜尋失敗');
+      }
+
       const data: GooglePlacesResponse = await res.json();
+      console.log('Places API Response:', data); // 添加调试日志
+      
       if (data.places && data.places[0] && data.places[0].location) {
-        const loc = data.places[0].location;
-        setGoogleMarkerPos({ lat: loc.latitude, lng: loc.longitude });
-        setGoogleMapCenter({ lat: loc.latitude, lng: loc.longitude });
-        setGoogleMapZoom(16);
-        // 地點資訊
-        setGooglePlaceInfo({
-          name: data.places[0].displayName?.text || '',
-          address: data.places[0].formattedAddress || '',
-          url: data.places[0].googleMapsUri || ''
-        });
-        // 取得地點照片
-        if (data.places[0].photos && data.places[0].photos.length > 0) {
-          const photos = data.places[0].photos;
-          const photoUrls = photos.map((photo: GooglePlacePhoto) =>
-            `https://places.googleapis.com/v1/${photo.name}/media?maxWidthPx=600&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`
-          );
-          setGooglePlacePhotos(photoUrls);
+        const place = data.places[0];
+        const loc = place.location;
+        
+        if (loc && typeof loc.latitude === 'number' && typeof loc.longitude === 'number') {
+          setGoogleMarkerPos({ lat: loc.latitude, lng: loc.longitude });
+          setGoogleMapCenter({ lat: loc.latitude, lng: loc.longitude });
+          setGoogleMapZoom(16);
+          
+          // 地點資訊
+          setGooglePlaceInfo({
+            name: place.displayName?.text || '',
+            address: place.formattedAddress || '',
+            url: place.googleMapsUri || ''
+          });
+          
+          // 取得地點照片
+          if (place.photos && place.photos.length > 0) {
+            const photoUrls = place.photos.map((photo: GooglePlacePhoto) =>
+              `https://places.googleapis.com/v1/${photo.name}/media?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&maxHeightPx=800&maxWidthPx=800`
+            );
+            setGooglePlacePhotos(photoUrls);
+          } else {
+            setGooglePlacePhotos([]);
+          }
         } else {
-          setGooglePlacePhotos([]);
+          setGoogleSearchError('地點資訊不完整，請嘗試其他關鍵字');
         }
       } else {
         setGoogleSearchError('查無此地點，請嘗試其他關鍵字');
       }
-    } catch {
-      setGoogleSearchError('搜尋失敗，請稍後再試');
+    } catch (error) {
+      console.error('Search error:', error);
+      setGoogleSearchError(error instanceof Error ? error.message : '搜尋失敗，請稍後再試');
     }
     setGoogleSearchLoading(false);
   };
@@ -164,33 +182,51 @@ const GoogleMapSearch: React.FC<GoogleMapSearchProps> = ({
       setGooglePlaceInfo(null);
       try {
         const res = await fetch(
-          `https://places.googleapis.com/v1/places/${placeId}?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`,
+          `https://places.googleapis.com/v1/places/${placeId}`,
           {
-            headers: { 'X-Goog-FieldMask': '*' }
+            method: 'GET',
+            headers: {
+              'X-Goog-Api-Key': process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+              'X-Goog-FieldMask': 'displayName,formattedAddress,location,photos,googleMapsUri'
+            }
           }
         );
+
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => null);
+          console.error('Google Places API Error:', errorData);
+          throw new Error(errorData?.error?.message || '取得地點資訊失敗');
+        }
+
         const data: GooglePlace = await res.json();
-        if (data.location) {
+        console.log('Place Details Response:', data); // 添加调试日志
+        
+        if (data.location && typeof data.location.latitude === 'number' && typeof data.location.longitude === 'number') {
           setGoogleMarkerPos({ lat: data.location.latitude, lng: data.location.longitude });
           setGoogleMapCenter({ lat: data.location.latitude, lng: data.location.longitude });
           setGoogleMapZoom(16);
-        }
-        setGooglePlaceInfo({
-          name: data.displayName?.text || '',
-          address: data.formattedAddress || '',
-          url: data.googleMapsUri || ''
-        });
-        if (data.photos && data.photos.length > 0) {
-          const photoUrls = data.photos.map(
-            (photo: GooglePlacePhoto) =>
-              `https://places.googleapis.com/v1/${photo.name}/media?maxWidthPx=600&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`
-          );
-          setGooglePlacePhotos(photoUrls);
+          
+          setGooglePlaceInfo({
+            name: data.displayName?.text || '',
+            address: data.formattedAddress || '',
+            url: data.googleMapsUri || ''
+          });
+          
+          if (data.photos && data.photos.length > 0) {
+            const photoUrls = data.photos.map(
+              (photo: GooglePlacePhoto) =>
+                `https://places.googleapis.com/v1/${photo.name}/media?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&maxHeightPx=800&maxWidthPx=800`
+            );
+            setGooglePlacePhotos(photoUrls);
+          } else {
+            setGooglePlacePhotos([]);
+          }
         } else {
-          setGooglePlacePhotos([]);
+          setGoogleSearchError('地點資訊不完整');
         }
-      } catch {
-        setGoogleSearchError('取得地點資訊失敗，請稍後再試');
+      } catch (error) {
+        console.error('Map click error:', error);
+        setGoogleSearchError(error instanceof Error ? error.message : '取得地點資訊失敗，請稍後再試');
       }
     }
   };

@@ -26,6 +26,7 @@ interface GeneratedContent {
   url: string;
   description: string;
   coachMessage: string;
+  fashionTip: string;
   outfitDetails: {
     climate: string;
     style: string;
@@ -50,7 +51,7 @@ const TravelOutfitCore = () => {
   const [generatedContent, setGeneratedContent] = useState<GeneratedContent | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [aiProvider, setAiProvider] = useState<'openai' | 'gemini'>('gemini');
-  
+
   // 新增 Step3 相關 state
   const [selectedPhoto, setSelectedPhoto] = useState<string>('');
 
@@ -100,6 +101,10 @@ const TravelOutfitCore = () => {
     if (selectedDestination && currentStep === 3) {
       setCurrentStep(4);
     }
+    // Mark step 4 as complete when content is generated
+    if (generatedContent) {
+      setCurrentStep(5); // This will make step 4 show checkmark in StepNavigator
+    }
     // Handle going backwards
     if (!uploadedClothes.length) {
       setCurrentStep(1);
@@ -107,22 +112,88 @@ const TravelOutfitCore = () => {
       setCurrentStep(2);
     } else if (!selectedDestination && currentStep > 3) {
       setCurrentStep(3);
+    } else if (!generatedContent && currentStep > 4) {
+      setCurrentStep(4);
     }
-  }, [uploadedClothes, selfieImage, selectedDestination, currentStep]);
+  }, [uploadedClothes, selfieImage, selectedDestination, generatedContent, currentStep]);
 
   const generateTravelContent = async () => {
     setIsGenerating(true);
 
-    // 組合 prompt，強調真實風格
     const clothesList = uploadedClothes.map(c => c.name).join('、') || '時尚服飾';
     const destName = selectedDestination?.name || '旅行地點';
-    const prompt = `
-    Combine the provided face and outfit onto a realistic human figure and place them naturally at the given location. 
-    Make sure the composition shows the full body (head to feet) clearly, centered in the frame, with natural proportions and lighting that matches the background. 
-    The final image should look like an authentic scene at this location.
-    ${clothesList ? `The outfit includes: ${clothesList}.` : ""}
-    Location: ${destName}.
+
+    // 根據不同的 AI 提供商使用優化的 prompt
+    const geminiPrompt = `
+    Create a photorealistic full-body fashion photo that perfectly matches both the person in the provided selfie and the exact clothing items uploaded.
+
+    CRITICAL - Facial Features (Must match EXACTLY):
+    - Copy the exact facial structure and proportions from the selfie
+    - Identical eye shape, size, and color
+    - Same nose shape and size
+    - Exact lip shape and size
+    - Identical eyebrow shape and thickness
+    - Same facial expression and characteristics
+    - Preserve any unique facial features (moles, freckles, etc.)
+
+    CRITICAL - Hair (Must match EXACTLY):
+    - Identical hair length and style
+    - Same hair color and highlights/lowlights
+    - Copy exact hair texture and volume
+    - Match any specific hair styling (bangs, layers, parting, etc.)
+    - Preserve any unique hair accessories
+
+    Body Features:
+    - Same body type and proportions
+    - Identical height and build
+    - Match skin tone perfectly
+
+    Clothing requirements (CRITICAL):
+    - Each piece of clothing must be EXACTLY as shown in the uploaded photos
+    - Maintain precise details of each garment (patterns, colors, textures, fit)
+    - Keep exact style and design elements of each piece
+    - Preserve all unique features and characteristics of the clothing
+    - Show the clothes fitting naturally on the person
+    - Ensure accurate layering and combination of pieces
+
+    Photo composition requirements:
+    - Full body view from head to toe
+    - Person centered in frame
+    - Natural standing pose
+    - Clear, even lighting to show clothing details
+    - Realistic background integration
+    - Professional fashion photo quality
+
+    Clothing items to include: ${clothesList}
+    Location: ${destName}
+
+    The final image must look like a professional fashion photo of the exact same person from the selfie, wearing the exact same clothes from the uploaded photos, at the given location. The person should be instantly recognizable as the same person from the selfie photo.
     `;
+
+    const dallEPrompt = `
+    Ultra-realistic full-body fashion photograph.
+    Subject: person with identical face, body type, height, and features as selfie
+    
+    Clothing: EXACT MATCH to uploaded photos
+    - Identical garments: ${clothesList}
+    - Same patterns, colors, textures
+    - Precise design details
+    - Accurate fit and draping
+    - Exact clothing combinations
+    
+    Pose: natural standing position, full body visible
+    Framing: centered, head-to-toe view
+    Style: high-end fashion photography
+    Setting: ${destName}, naturally integrated
+    Lighting: bright, even, professional, highlighting clothing details
+    Quality: photorealistic, sharp details, 8k
+    
+    Critical: 
+    - Maintain exact likeness to selfie - same face, body, proportions
+    - Clothing must be identical to uploaded photos - same exact pieces with all details preserved
+    `;
+
+    const prompt = aiProvider === 'gemini' ? geminiPrompt : dallEPrompt;
     
     let imageUrl = '';
     try {
@@ -166,11 +237,21 @@ const TravelOutfitCore = () => {
     ];
     const randomMessage = coachMessages[Math.floor(Math.random() * coachMessages.length)];
 
+    const fashionTips = [
+      `搭配一條精緻的項鍊，為整體造型增添優雅氣質`,
+      `選擇簡約的配飾，讓服裝主體更加突出`,
+      `巧妙搭配飾品，能瞬間提升整體造型質感，展現獨特魅力`,
+      `挑選合適的包款，既實用又能畫龍點睛`,
+      `配戴質感手錶或手環，為穿搭增添時尚細節`
+    ];
+    const randomTip = fashionTips[Math.floor(Math.random() * fashionTips.length)];
+
     setGeneratedContent({
       type: 'image',
       url: imageUrl,
       description: `為你在${selectedDestination?.name || '旅行地點'}的旅行生成的專屬穿搭照片`,
       coachMessage: randomMessage,
+      fashionTip: randomTip,
       outfitDetails: {
         climate: '',
         style: '',
@@ -184,21 +265,43 @@ const TravelOutfitCore = () => {
 
   const handleDownloadImage = () => {
     if (generatedContent?.url) {
-      // 創建一個臨時的 a 標籤來下載
-      const link = document.createElement('a');
-      link.href = generatedContent.url;
-      link.download = `travel-outfit-${selectedDestination?.name || 'photo'}.png`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      // 創建一個臨時的 canvas 來轉換圖片格式
+      const canvas = document.createElement('canvas');
+      const img = new Image();
+      
+      img.onload = () => {
+        // 設定 canvas 大小與圖片相同
+        canvas.width = img.width;
+        canvas.height = img.height;
+        
+        // 在 canvas 上繪製圖片
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        
+        ctx.drawImage(img, 0, 0);
+        
+        // 轉換為 JPEG 格式，設定 0.95 的品質
+        const jpegUrl = canvas.toDataURL('image/jpeg', 0.95);
+        
+        // 創建下載連結
+        const link = document.createElement('a');
+        link.href = jpegUrl;
+        link.download = `travel-outfit-${selectedDestination?.name || 'photo'}.jpg`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      };
+      
+      // 設定圖片來源
+      img.src = generatedContent.url;
     }
   };
 
   const resetAll = () => {
-    setUploadedClothes([]);
-    setSelfieImage(null);
-    setSelectedDestination(null);
-    setGeneratedContent(null);
+                setUploadedClothes([]);
+                setSelfieImage(null);
+                setSelectedDestination(null);
+                setGeneratedContent(null);
     setCurrentStep(1); // Reset step to 1
   };
 
@@ -309,16 +412,16 @@ const TravelOutfitCore = () => {
                 </button>
               </div>
             )}
-            <div className="flex justify-center mt-8">
-              <button
+          <div className="flex justify-center mt-8">
+            <button
                 onClick={() => handleNextStep(2)}
                 className="bg-gradient-to-r from-pink-500 to-purple-600 text-white px-8 py-3 rounded-lg hover:shadow-lg hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                disabled={uploadedClothes.length === 0}
-              >
+              disabled={uploadedClothes.length === 0}
+            >
                 確認
-              </button>
-            </div>
+            </button>
           </div>
+        </div>
 
           {/* Step 2: Upload Selfie */}
           <div 
@@ -353,22 +456,19 @@ const TravelOutfitCore = () => {
                 </button>
               </div>
             )}
-            <div className="flex justify-center mt-8">
-              <button
+          <div className="flex justify-center mt-8">
+            <button
                 onClick={() => handleNextStep(3)}
                 className="bg-gradient-to-r from-pink-500 to-purple-600 text-white px-8 py-3 rounded-lg hover:shadow-lg hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                disabled={!selfieImage}
-              >
+              disabled={!selfieImage}
+            >
                 確認
-              </button>
-            </div>
+            </button>
           </div>
+        </div>
 
           {/* Step 3: Destination Selection */}
-          <div 
-            ref={stepRefs.destination}
-            className="relative pb-16 mb-16 border-b-2 border-gray-200 before:absolute before:bottom-0 before:left-1/2 before:-translate-x-1/2 before:w-32 before:h-1 before:bg-gradient-to-r before:from-pink-200 before:via-purple-200 before:to-pink-200 before:rounded-full scroll-mt-30"
-          >
+          <div ref={stepRefs.destination} className="relative pb-16 mb-16 border-b-2 border-gray-200 before:absolute before:bottom-0 before:left-1/2 before:-translate-x-1/2 before:w-32 before:h-1 before:bg-gradient-to-r before:from-pink-200 before:via-purple-200 before:to-pink-200 before:rounded-full scroll-mt-30">
             <div className="text-center mb-8">
               <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-4">目的地規劃</h2>
               <p className="text-gray-600">輸入目的地，搜尋並選擇代表照片</p>
@@ -391,10 +491,10 @@ const TravelOutfitCore = () => {
               <PexelsSearch
                 result={pexelsResult}
                 setResult={setPexelsResult}
-                selectedPhoto={selectedPhoto}
+            selectedPhoto={selectedPhoto}
                 setSelectedPhoto={(photo) => setSelectedPhoto(photo ?? '')}
                 setSelectedDestination={(destination) => setSelectedDestination(destination ? { ...destination, mapUrl: destination.mapUrl ?? '' } : null)}
-              />
+          />
             )}
             {destinationTab === 'google' && (
               <GoogleMapSearch
@@ -421,16 +521,16 @@ const TravelOutfitCore = () => {
                 setSelectedDestination={setSelectedDestination}
               />
             )}
-            <div className="flex justify-center mt-8">
-              <button
+          <div className="flex justify-center mt-8">
+            <button
                 onClick={() => handleNextStep(4)}
                 className="bg-gradient-to-r from-pink-500 to-purple-600 text-white px-8 py-3 rounded-lg hover:shadow-lg hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 disabled={!selectedDestination}
-              >
+            >
                 確認
-              </button>
-            </div>
+            </button>
           </div>
+        </div>
 
           {/* Step 4: Generate Result - No bottom border for the last step */}
           <div ref={stepRefs.generate} className="mb-16 scroll-mt-30">

@@ -134,7 +134,7 @@ export default async function handler(req, res) {
     // 組合多 part prompt
     const promptParts = [];
     if (selfiePart) {
-      promptParts.push({ text: '這是使用者的自拍照，請用這張臉和身形作為主角：' });
+      promptParts.push({ text: '這是使用者的自拍照，請務必完全保持臉部特徵的一致性：' });
       promptParts.push({ fileData: selfiePart.fileData });
     }
     if (clothesParts.length > 0) {
@@ -148,9 +148,22 @@ export default async function handler(req, res) {
       promptParts.push({ fileData: locationPart.fileData });
     }
     promptParts.push({ text: `\n
-      Combine the provided face and outfit onto a realistic human figure and place them naturally at the given location. 
-      Make sure the composition shows the full body (head to feet) clearly, centered in the frame, with natural proportions and lighting that matches the background. 
-      The final image should look like an authentic scene at this location.` });
+      CRITICAL PRIORITY - FACIAL SIMILARITY:
+      The generated face MUST be an EXACT REPLICA of the provided selfie photo.
+      - Maintain precise facial features, proportions, and unique characteristics
+      - Copy exact eye shape, size, and position
+      - Match nose structure and mouth details perfectly
+      - Preserve skin tone and complexion exactly
+      - Keep identical facial expression
+      - Ensure same head tilt and angle
+      
+      Secondary Priorities:
+      1. Combine the provided outfit onto the figure naturally
+      2. Place the person in the given location with appropriate lighting and perspective
+      3. Ensure the composition shows the full body clearly and centered
+      
+      The final result should look like the exact same person from the selfie, just in a different outfit and location.
+      This is ABSOLUTELY CRITICAL - the face must be indistinguishable from the original selfie.` });
 
     // Debug log: 檢查 promptParts
     console.log('promptParts:', promptParts);

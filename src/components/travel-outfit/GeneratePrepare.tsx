@@ -95,10 +95,10 @@ const Step4Prepare: React.FC<Step4PrepareProps> = ({
         {!isGenerating && (
           <button
             onClick={generateTravelContent}
-            className="w-full md:w-auto bg-gradient-to-r from-pink-500 to-purple-600 text-white px-12 py-4 rounded-lg hover:shadow-lg transition-all flex items-center justify-center gap-3 mx-auto text-lg font-medium"
+            className="w-full md:w-auto bg-gradient-to-r from-pink-500 to-purple-600 text-white px-12 py-4 rounded-lg hover:shadow-lg transition-all flex items-center justify-center gap-3 mx-auto text-lg font-medium cursor-pointer"
           >
             <Sparkles size={24} />
-            揭曉我的獨家旅程穿搭
+            揭曉我的旅行穿搭
           </button>
         )}
         {isGenerating && (
@@ -106,8 +106,12 @@ const Step4Prepare: React.FC<Step4PrepareProps> = ({
             <div className="w-24 h-24 mx-auto mb-6">
               <div className="w-24 h-24 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin"></div>
             </div>
-            <h2 className="text-2xl font-bold text-gray-800 mb-4">AI 正在生成你的旅遊穿搭照片...</h2>
-            <p className="text-gray-600 mb-4">分析你的衣服、身形和目的地風格</p>
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">AI 正在為您量身打造專屬穿搭，預計約1分鐘完成...</h2>
+            <div className="space-y-2 text-gray-600">
+              <p>✨ 分析您的衣服、身形和目的地風格</p>
+              <p>🎨 繪製完美符合場景的穿搭照片</p>
+              <p>🌟 打造獨一無二的旅程風格</p>
+            </div>
           </div>
         )}
       </div>
