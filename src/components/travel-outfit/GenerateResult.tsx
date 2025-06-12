@@ -1,13 +1,5 @@
 import React, { useState } from 'react';
-import Image from 'next/image';
-import { Sparkles, Download, Share2, Facebook, Copy, ExternalLink, RotateCcw, Maximize2 } from 'lucide-react';
-
-interface ShareConfig {
-  platform: 'line' | 'facebook' | 'instagram';
-  color: string;
-  icon: React.ReactNode;
-  label: string;
-}
+import { Sparkles, Download, Share2, Facebook, Maximize2 } from 'lucide-react';
 
 interface GeneratedContent {
   type: string;
