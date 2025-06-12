@@ -5,7 +5,11 @@ const fs = require("fs");
 const formidable = require("formidable");
 
 export const config = {
-  api: { bodyParser: false },
+  api: { 
+    bodyParser: false,
+    // 設定為 background function
+    background: true
+  },
 };
 
 const parseForm = (req) =>
