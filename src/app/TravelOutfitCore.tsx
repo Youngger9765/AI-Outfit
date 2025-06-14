@@ -174,6 +174,13 @@ const TravelOutfitCore = () => {
     Ultra-realistic full-body fashion photograph.
     Subject: person with identical face, body type, height, and features as selfie
     
+    CRITICAL - Selfie Reference:
+    - Use the provided selfie photo as the EXACT reference for the person's appearance
+    - Match all facial features, expressions, and characteristics from the selfie
+    - Keep identical hair style, color, and texture from the selfie
+    - Maintain the same skin tone and complexion
+    - Preserve any unique features (moles, freckles, etc.)
+    
     Clothing: EXACT MATCH to uploaded photos
     - Identical garments: ${clothesList}
     - Same patterns, colors, textures
@@ -191,6 +198,7 @@ const TravelOutfitCore = () => {
     Critical: 
     - Maintain exact likeness to selfie - same face, body, proportions
     - Clothing must be identical to uploaded photos - same exact pieces with all details preserved
+    - The final image should look like the exact same person from the selfie, just in different clothes and location
     `;
 
     const prompt = aiProvider === 'gemini' ? geminiPrompt : openaiPrompt;
