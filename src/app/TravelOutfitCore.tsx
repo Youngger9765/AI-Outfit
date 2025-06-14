@@ -50,7 +50,7 @@ const TravelOutfitCore = () => {
   >(null);
   const [generatedContent, setGeneratedContent] = useState<GeneratedContent | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [aiProvider, setAiProvider] = useState<'openai' | 'gemini'>('gemini');
+  const [aiProvider, setAiProvider] = useState<'openai' | 'gemini'>('openai');
 
   // 新增 Step3 相關 state
   const [selectedPhoto, setSelectedPhoto] = useState<string>('');
