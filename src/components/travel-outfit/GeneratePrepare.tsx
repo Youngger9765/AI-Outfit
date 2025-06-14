@@ -38,16 +38,18 @@ const Step4Prepare: React.FC<Step4PrepareProps> = ({
       <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-4">準備生成你的旅遊穿搭照片</h2>
       {/* AI 服務商選擇器 */}
       <div className="flex justify-center mb-6 gap-6">
-        <label className="flex items-center gap-2">
-          <input
-            type="radio"
-            name="aiProvider"
-            value="gemini"
-            checked={aiProvider === 'gemini'}
-            onChange={() => setAiProvider('gemini')}
-          />
-          Google Gemini
-        </label>
+        {window.location.hostname === 'localhost' && window.location.port === '3000' && (
+          <label className="flex items-center gap-2">
+            <input
+              type="radio"
+              name="aiProvider"
+              value="gemini"
+              checked={aiProvider === 'gemini'}
+              onChange={() => setAiProvider('gemini')}
+            />
+            Google Gemini（開發用）
+          </label>
+        )}
         <label className="flex items-center gap-2">
           <input
             type="radio"
