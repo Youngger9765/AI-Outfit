@@ -162,6 +162,12 @@ export default async function handler(req, res) {
       2. Place the person in the given location with appropriate lighting and perspective
       3. Ensure the composition shows the full body clearly and centered
       
+      Image Requirements:
+      - Aspect ratio: 2:3 (portrait orientation)
+      - Resolution: 1024x1536 pixels
+      - Full body view from head to toe
+      - Person centered in frame
+      
       The final result should look like the exact same person from the selfie, just in a different outfit and location.
       This is ABSOLUTELY CRITICAL - the face must be indistinguishable from the original selfie.` });
 

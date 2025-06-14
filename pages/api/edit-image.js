@@ -47,7 +47,7 @@ export default async function handler(req, res) {
     const rsp = await client.images.edit({
       model: "gpt-image-1",
       image: images,
-      size: "1024x1024",
+      size: "1024x1536",
       prompt,
     });
 
