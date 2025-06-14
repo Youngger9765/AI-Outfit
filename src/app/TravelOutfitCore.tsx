@@ -170,7 +170,7 @@ const TravelOutfitCore = () => {
     The final image must look like a professional fashion photo of the exact same person from the selfie, wearing the exact same clothes from the uploaded photos, at the given location. The person should be instantly recognizable as the same person from the selfie photo.
     `;
 
-    const dallEPrompt = `
+    const openaiPrompt = `
     Ultra-realistic full-body fashion photograph.
     Subject: person with identical face, body type, height, and features as selfie
     
@@ -193,7 +193,7 @@ const TravelOutfitCore = () => {
     - Clothing must be identical to uploaded photos - same exact pieces with all details preserved
     `;
 
-    const prompt = aiProvider === 'gemini' ? geminiPrompt : dallEPrompt;
+    const prompt = aiProvider === 'gemini' ? geminiPrompt : openaiPrompt;
     
     let imageUrl = '';
     try {
