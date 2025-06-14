@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Sparkles } from 'lucide-react';
 
@@ -33,12 +33,18 @@ const Step4Prepare: React.FC<Step4PrepareProps> = ({
   isGenerating,
   generateTravelContent
 }) => {
+  const [isDev, setIsDev] = useState(false);
+
+  useEffect(() => {
+    setIsDev(window.location.hostname === 'localhost' && window.location.port === '3000');
+  }, []);
+
   return (
     <div className="max-w-md mx-auto text-center">
       <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-4">準備生成你的旅遊穿搭照片</h2>
       {/* AI 服務商選擇器 */}
       <div className="flex justify-center mb-6 gap-6">
-        {window.location.hostname === 'localhost' && window.location.port === '3000' && (
+        {isDev && (
           <label className="flex items-center gap-2">
             <input
               type="radio"
