@@ -123,51 +123,8 @@ const TravelOutfitCore = () => {
     const clothesList = uploadedClothes.map(c => c.name).join('、') || '時尚服飾';
     const destName = selectedDestination?.name || '旅行地點';
 
-    // 根據不同的 AI 提供商使用優化的 prompt
+    // 根據不同的 AI 提供商使用優化的 prompt，內建在 @edit-image-gemini.js 中
     const geminiPrompt = `
-    Create a photorealistic full-body fashion photo that perfectly matches both the person in the provided selfie and the exact clothing items uploaded.
-
-    CRITICAL - Facial Features (Must match EXACTLY):
-    - Copy the exact facial structure and proportions from the selfie
-    - Identical eye shape, size, and color
-    - Same nose shape and size
-    - Exact lip shape and size
-    - Identical eyebrow shape and thickness
-    - Same facial expression and characteristics
-    - Preserve any unique facial features (moles, freckles, etc.)
-
-    CRITICAL - Hair (Must match EXACTLY):
-    - Identical hair length and style
-    - Same hair color and highlights/lowlights
-    - Copy exact hair texture and volume
-    - Match any specific hair styling (bangs, layers, parting, etc.)
-    - Preserve any unique hair accessories
-
-    Body Features:
-    - Same body type and proportions
-    - Identical height and build
-    - Match skin tone perfectly
-
-    Clothing requirements (CRITICAL):
-    - Each piece of clothing must be EXACTLY as shown in the uploaded photos
-    - Maintain precise details of each garment (patterns, colors, textures, fit)
-    - Keep exact style and design elements of each piece
-    - Preserve all unique features and characteristics of the clothing
-    - Show the clothes fitting naturally on the person
-    - Ensure accurate layering and combination of pieces
-
-    Photo composition requirements:
-    - Full body view from head to toe
-    - Person centered in frame
-    - Natural standing pose
-    - Clear, even lighting to show clothing details
-    - Realistic background integration
-    - Professional fashion photo quality
-
-    Clothing items to include: ${clothesList}
-    Location: ${destName}
-
-    The final image must look like a professional fashion photo of the exact same person from the selfie, wearing the exact same clothes from the uploaded photos, at the given location. The person should be instantly recognizable as the same person from the selfie photo.
     `;
 
     const openaiPrompt = `
