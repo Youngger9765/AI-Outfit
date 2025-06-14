@@ -48,6 +48,7 @@ export default async function handler(req, res) {
       model: "gpt-image-1",
       image: images,
       size: "1024x1536",
+      quality: "low",
       prompt,
     });
 
