@@ -49,8 +49,14 @@ export default async function handler(req, res) {
       image: images,
       size: "1024x1536",
       quality: "low",
+      output_format: "png",
+      output_compression: 100,
       prompt,
     });
+
+    if (!rsp.data?.[0]?.b64_json) {
+      throw new Error("No image generated from OpenAI");
+    }
 
     const image_base64 = rsp.data[0].b64_json;
     res.status(200).json({ imageBase64: image_base64 });
