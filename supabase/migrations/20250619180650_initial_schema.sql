@@ -54,6 +54,16 @@ CREATE TABLE IF NOT EXISTS travel_outfits (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- 建立 user_profiles 資料表
+CREATE TABLE IF NOT EXISTS public.user_profiles (
+  id uuid references auth.users on delete cascade not null primary key,
+  email text not null,
+  name text,
+  avatar_url text,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
 -- 建立索引
 CREATE INDEX IF NOT EXISTS idx_clothing_items_user_id ON clothing_items(user_id);
 CREATE INDEX IF NOT EXISTS idx_clothing_items_category ON clothing_items(category);
@@ -65,6 +75,7 @@ ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE clothing_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE outfits ENABLE ROW LEVEL SECURITY;
 ALTER TABLE travel_outfits ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
 
 -- 用戶資料表政策
 CREATE POLICY "Users can view own profile" ON users
@@ -73,18 +84,75 @@ CREATE POLICY "Users can view own profile" ON users
 CREATE POLICY "Users can update own profile" ON users
   FOR UPDATE USING (auth.uid() = id);
 
--- 衣物資料表政策
-CREATE POLICY "Users can view own clothing items" ON clothing_items
-  FOR SELECT USING (auth.uid() = user_id);
+-- 重設 clothing_items 的 RLS 政策
+drop policy if exists "Users can view own clothing items" on clothing_items;
+drop policy if exists "Users can insert own clothing items" on clothing_items;
+drop policy if exists "Users can update own clothing items" on clothing_items;
+drop policy if exists "Users can delete own clothing items" on clothing_items;
 
-CREATE POLICY "Users can insert own clothing items" ON clothing_items
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
+-- 設定 clothing_items 的 RLS 政策
+create policy "Users can view own clothing items"
+  on clothing_items
+  for select
+  to authenticated
+  using (auth.uid() = user_id);
 
-CREATE POLICY "Users can update own clothing items" ON clothing_items
-  FOR UPDATE USING (auth.uid() = user_id);
+create policy "Users can insert own clothing items"
+  on clothing_items
+  for insert
+  to authenticated
+  with check (auth.uid() = user_id);
 
-CREATE POLICY "Users can delete own clothing items" ON clothing_items
-  FOR DELETE USING (auth.uid() = user_id);
+create policy "Users can update own clothing items"
+  on clothing_items
+  for update
+  to authenticated
+  using (auth.uid() = user_id);
+
+create policy "Users can delete own clothing items"
+  on clothing_items
+  for delete
+  to authenticated
+  using (auth.uid() = user_id);
+
+-- 確保 RLS 已啟用
+alter table clothing_items enable row level security;
+
+-- 重設 storage 的 RLS 政策
+drop policy if exists "Authenticated users can upload images" on storage.objects;
+drop policy if exists "Authenticated users can update their images" on storage.objects;
+drop policy if exists "Images are publicly accessible" on storage.objects;
+drop policy if exists "Users can delete their own images" on storage.objects;
+
+-- 設定 storage 的 RLS 政策
+create policy "Authenticated users can upload images"
+  on storage.objects
+  for insert
+  to authenticated
+  with check (bucket_id = 'closet-images');
+
+create policy "Authenticated users can update their images"
+  on storage.objects
+  for update
+  to authenticated
+  using (bucket_id = 'closet-images' and auth.uid()::text = (storage.foldername(name))[1]);
+
+create policy "Images are publicly accessible"
+  on storage.objects
+  for select
+  to public
+  using (bucket_id = 'closet-images');
+
+create policy "Users can delete their own images"
+  on storage.objects
+  for delete
+  to authenticated
+  using (bucket_id = 'closet-images' and auth.uid()::text = (storage.foldername(name))[1]);
+
+-- 確保 storage bucket 存在
+insert into storage.buckets (id, name, public)
+values ('closet-images', 'closet-images', true)
+on conflict (id) do nothing;
 
 -- 搭配資料表政策
 CREATE POLICY "Users can view own outfits" ON outfits
@@ -146,4 +214,39 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION handle_new_user(); 
+  FOR EACH ROW EXECUTE FUNCTION handle_new_user();
+
+-- 設定 RLS 政策
+ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
+
+-- 允許使用者讀取自己的資料
+CREATE POLICY "Users can view own profile"
+  ON public.user_profiles FOR SELECT
+  TO authenticated
+  USING (auth.uid() = id);
+
+-- 允許使用者更新自己的資料
+CREATE POLICY "Users can update own profile"
+  ON public.user_profiles FOR UPDATE
+  TO authenticated
+  USING (auth.uid() = id);
+
+-- 允許在註冊時建立資料
+CREATE POLICY "Users can insert own profile"
+  ON public.user_profiles FOR INSERT
+  TO authenticated
+  WITH CHECK (auth.uid() = id);
+
+-- 建立觸發器，在使用者註冊時自動建立 profile
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.user_profiles (id, email)
+  VALUES (NEW.id, NEW.email);
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user(); 

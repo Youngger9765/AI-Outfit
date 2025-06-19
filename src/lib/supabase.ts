@@ -3,7 +3,17 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+// 建立單一的 Supabase client 實例
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    // 自動重新整理 session
+    autoRefreshToken: true,
+    // 持久化 session
+    persistSession: true,
+    // 偵測 session 變化
+    detectSessionInUrl: true
+  }
+})
 
 // 資料庫類型定義
 export interface User {

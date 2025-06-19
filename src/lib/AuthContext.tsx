@@ -3,106 +3,84 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { User } from '@supabase/supabase-js'
 import { supabase } from './supabase'
-import { getCurrentUser, getUserProfile } from './auth'
 
 interface AuthContextType {
   user: User | null
-  profile: any | null
   loading: boolean
-  signOut: () => Promise<void>
-  refreshProfile: () => Promise<void>
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined)
+const AuthContext = createContext<AuthContextType>({
+  user: null,
+  loading: true,
+})
 
-export const useAuth = () => {
-  const context = useContext(AuthContext)
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider')
-  }
-  return context
-}
-
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
-  const [profile, setProfile] = useState<any | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // 取得初始用戶狀態
-    const getInitialUser = async () => {
+    // 檢查初始 session
+    const checkUser = async () => {
       try {
-        const user = await getCurrentUser()
-        setUser(user)
-        
-        if (user) {
-          const profile = await getUserProfile(user.id)
-          setProfile(profile)
+        const { data: { session }, error } = await supabase.auth.getSession()
+        if (error) {
+          console.error('取得 session 錯誤:', error)
+          return
+        }
+
+        if (session?.user) {
+          console.log('已找到 session:', {
+            id: session.user.id,
+            email: session.user.email,
+            sessionExpires: session.expires_at
+          })
+          setUser(session.user)
         }
       } catch (error) {
-        console.error('Error getting initial user:', error)
+        console.error('檢查用戶狀態時發生錯誤:', error)
       } finally {
         setLoading(false)
       }
     }
 
-    getInitialUser()
+    checkUser()
 
     // 監聽認證狀態變化
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setUser(session?.user ?? null)
-        
-        if (session?.user) {
-          try {
-            const profile = await getUserProfile(session.user.id)
-            setProfile(profile)
-          } catch (error) {
-            console.error('Error getting user profile:', error)
-          }
-        } else {
-          setProfile(null)
-        }
-        
-        setLoading(false)
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('認證狀態變化:', event, session?.user?.email)
+      
+      if (session?.user) {
+        console.log('用戶已登入/更新:', {
+          id: session.user.id,
+          email: session.user.email,
+          sessionExpires: session.expires_at
+        })
+        setUser(session.user)
+      } else {
+        console.log('用戶已登出或 session 無效')
+        setUser(null)
       }
-    )
+      setLoading(false)
+    })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      subscription.unsubscribe()
+    }
   }, [])
 
-  const signOut = async () => {
-    try {
-      await supabase.auth.signOut()
-      setUser(null)
-      setProfile(null)
-    } catch (error) {
-      console.error('Error signing out:', error)
-    }
-  }
-
-  const refreshProfile = async () => {
-    if (user) {
-      try {
-        const profile = await getUserProfile(user.id)
-        setProfile(profile)
-      } catch (error) {
-        console.error('Error refreshing profile:', error)
-      }
-    }
-  }
-
-  const value = {
-    user,
-    profile,
-    loading,
-    signOut,
-    refreshProfile
-  }
-
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={{ user, loading }}>
       {children}
     </AuthContext.Provider>
   )
+}
+
+export const useAuth = () => {
+  const context = useContext(AuthContext)
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider')
+  }
+  return context
 } 

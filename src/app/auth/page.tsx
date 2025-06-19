@@ -17,6 +17,7 @@ export default function AuthPage() {
 
   // 如果已登入，重定向到首頁
   if (user) {
+    console.log('用戶已登入，重定向到首頁:', user.email);
     router.push('/')
     return null
   }
@@ -27,13 +28,20 @@ export default function AuthPage() {
     setError('')
 
     try {
+      console.log('開始認證流程:', { isLogin, email });
+      
       if (isLogin) {
-        await signIn(email, password)
+        const result = await signIn(email, password)
+        console.log('登入成功:', result);
       } else {
-        await signUp(email, password, name)
+        const result = await signUp(email, password, name)
+        console.log('註冊成功:', result);
       }
+      
+      console.log('認證完成，重定向到首頁');
       router.push('/')
     } catch (error: any) {
+      console.error('認證錯誤:', error);
       setError(error.message)
     } finally {
       setLoading(false)

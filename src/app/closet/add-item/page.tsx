@@ -1,389 +1,442 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/AuthContext'
-import { addClothingItem, uploadImage } from '@/lib/closet'
-import { ClothingItem } from '@/lib/supabase'
+import Image from 'next/image'
+import imageCompression from 'browser-image-compression'
 import Link from 'next/link'
 import { ArrowLeft, Upload, X, Plus, Tag } from 'lucide-react'
 import { validateImageFile, validateInputLength, validateTags, INPUT_LIMITS } from '@/lib/security'
+import { supabase } from '@/lib/supabase'
 
 export default function AddItemPage() {
-  const { user } = useAuth()
   const router = useRouter()
+  const { user } = useAuth()
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  
-  // 表單狀態
-  const [name, setName] = useState('')
-  const [category, setCategory] = useState<ClothingItem['category']>('top')
-  const [color, setColor] = useState('')
-  const [season, setSeason] = useState<ClothingItem['season']>('all')
-  const [description, setDescription] = useState('')
-  const [tags, setTags] = useState<string[]>([])
-  const [newTag, setNewTag] = useState('')
-  
-  // 圖片上傳
-  const [imageFile, setImageFile] = useState<File | null>(null)
-  const [imagePreview, setImagePreview] = useState<string>('')
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string>('')
+  const [formData, setFormData] = useState({
+    name: '',
+    category: 'top',
+    color: '',
+    season: 'all',
+    description: '',
+  })
 
-  if (!user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">請先登入</h2>
-          <Link href="/auth" className="text-blue-600 hover:text-blue-500">
-            前往登入
-          </Link>
-        </div>
-      </div>
-    )
-  }
+  // 檢查用戶是否已登入
+  useEffect(() => {
+    const checkUser = async () => {
+      if (!user) {
+        console.log('未找到用戶，重新導向到登入頁面')
+        router.push('/auth')
+        return
+      }
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession()
+        if (error) {
+          console.error('取得 session 錯誤:', error)
+          router.push('/auth')
+          return
+        }
+        
+        if (!session) {
+          console.log('未找到 session，嘗試重新整理 session')
+          const { error: refreshError } = await supabase.auth.refreshSession()
+          if (refreshError) {
+            console.error('重新整理 session 失敗:', refreshError)
+            router.push('/auth')
+            return
+          }
+        } else {
+          console.log('用戶已登入:', {
+            id: session.user.id,
+            email: session.user.email,
+            sessionExpires: session.expires_at
+          })
+        }
+      } catch (error) {
+        console.error('檢查用戶狀態時發生錯誤:', error)
+        router.push('/auth')
+      }
+    }
+
+    checkUser()
+  }, [user, router])
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
-    // 檔案驗證
-    const validation = validateImageFile(file)
-    if (!validation.valid) {
-      setError(validation.error!)
+    // 驗證檔案類型
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+    if (!allowedTypes.includes(file.type)) {
+      alert('只允許上傳 JPG、PNG、WebP 或 GIF 圖片')
       return
     }
 
-    setImageFile(file)
-    setError('')
-    
-    // 建立預覽
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      setImagePreview(e.target?.result as string)
-    }
-    reader.readAsDataURL(file)
+    // 設定預覽
+    const objectUrl = URL.createObjectURL(file)
+    setPreviewUrl(objectUrl)
+    setSelectedFile(file)
+
+    // 清理前一個預覽URL
+    return () => URL.revokeObjectURL(objectUrl)
   }
 
-  const handleAddTag = () => {
-    if (!newTag.trim()) return
-
-    // 標籤驗證
-    if (!validateInputLength(newTag, INPUT_LIMITS.TAG_MAX_LENGTH)) {
-      setError(`標籤不能超過 ${INPUT_LIMITS.TAG_MAX_LENGTH} 個字元`)
-      return
+  const compressImage = async (file: File): Promise<File> => {
+    const options = {
+      maxSizeMB: 0.2,
+      maxWidthOrHeight: 1200,
+      useWebWorker: true,
     }
 
-    if (tags.length >= INPUT_LIMITS.MAX_TAGS_COUNT) {
-      setError(`標籤數量不能超過 ${INPUT_LIMITS.MAX_TAGS_COUNT} 個`)
-      return
+    try {
+      const compressedFile = await imageCompression(file, options)
+      console.log('原始檔案大小:', file.size / 1024 / 1024, 'MB')
+      console.log('壓縮後檔案大小:', compressedFile.size / 1024 / 1024, 'MB')
+      return compressedFile
+    } catch (error) {
+      console.error('圖片壓縮失敗:', error)
+      throw new Error('圖片壓縮失敗: ' + (error instanceof Error ? error.message : '未知錯誤'))
     }
-
-    if (tags.includes(newTag.trim())) {
-      setError('標籤已存在')
-      return
-    }
-
-    setTags([...tags, newTag.trim()])
-    setNewTag('')
-    setError('')
   }
 
-  const handleRemoveTag = (tagToRemove: string) => {
-    setTags(tags.filter(tag => tag !== tagToRemove))
+  const uploadImage = async (file: File): Promise<string> => {
+    if (!user) {
+      throw new Error('請先登入')
+    }
+
+    try {
+      // 先取得最新的 session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      if (sessionError) {
+        console.error('取得 session 錯誤:', sessionError)
+        throw new Error('無法取得 session')
+      }
+
+      if (!session) {
+        console.log('嘗試重新整理 session')
+        const { error: refreshError } = await supabase.auth.refreshSession()
+        if (refreshError) {
+          console.error('重新整理 session 失敗:', refreshError)
+          throw new Error('請重新登入')
+        }
+      }
+
+      // 再次確認 session
+      const { data: { session: currentSession } } = await supabase.auth.getSession()
+      if (!currentSession) {
+        throw new Error('無法取得有效的 session')
+      }
+
+      // 壓縮圖片
+      const compressedFile = await compressImage(file)
+
+      // 生成唯一的檔案名稱
+      const timestamp = Date.now()
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${timestamp}.${fileExt}`
+
+      console.log('準備上傳檔案:', {
+        fileName,
+        fileSize: compressedFile.size,
+        fileType: compressedFile.type,
+        userId: currentSession.user.id,
+        bucket: 'closet-images'
+      })
+
+      // 上傳到 Supabase Storage
+      const { error: uploadError, data } = await supabase.storage
+        .from('closet-images')
+        .upload(fileName, compressedFile, {
+          cacheControl: '3600',
+          upsert: true,
+          contentType: compressedFile.type
+        })
+
+      if (uploadError) {
+        console.error('上傳錯誤詳情:', {
+          message: uploadError.message,
+          name: uploadError.name,
+          stack: uploadError.stack
+        })
+        throw new Error(`上傳失敗: ${uploadError.message}`)
+      }
+
+      if (!data?.path) {
+        throw new Error('上傳失敗：沒有收到檔案路徑')
+      }
+
+      // 取得公開 URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('closet-images')
+        .getPublicUrl(data.path)
+
+      if (!publicUrl) {
+        throw new Error('無法取得圖片 URL')
+      }
+
+      console.log('上傳成功:', {
+        path: data.path,
+        publicUrl,
+        fileInfo: {
+          size: compressedFile.size,
+          type: compressedFile.type
+        }
+      })
+
+      return publicUrl
+    } catch (error) {
+      console.error('圖片上傳失敗:', error)
+      if (error instanceof Error) {
+        console.error('錯誤詳情:', {
+          message: error.message,
+          name: error.name,
+          stack: error.stack
+        })
+      }
+      throw error
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!imageFile) {
-      setError('請選擇衣物圖片')
+    if (!selectedFile) {
+      alert('請選擇衣物圖片')
       return
     }
 
-    // 輸入驗證
-    if (!validateInputLength(name, INPUT_LIMITS.NAME_MAX_LENGTH)) {
-      setError(`衣物名稱不能超過 ${INPUT_LIMITS.NAME_MAX_LENGTH} 個字元`)
+    if (!user) {
+      alert('請先登入')
+      router.push('/auth')
       return
     }
 
-    if (!validateInputLength(color, INPUT_LIMITS.COLOR_MAX_LENGTH)) {
-      setError(`顏色不能超過 ${INPUT_LIMITS.COLOR_MAX_LENGTH} 個字元`)
+    // 驗證必填欄位
+    if (!formData.name.trim()) {
+      alert('請輸入衣物名稱')
       return
     }
 
-    if (description && !validateInputLength(description, INPUT_LIMITS.DESCRIPTION_MAX_LENGTH)) {
-      setError(`描述不能超過 ${INPUT_LIMITS.DESCRIPTION_MAX_LENGTH} 個字元`)
+    if (!formData.category) {
+      alert('請選擇衣物分類')
       return
     }
 
-    const tagValidation = validateTags(tags)
-    if (!tagValidation.valid) {
-      setError(tagValidation.error!)
+    if (!formData.color.trim()) {
+      alert('請輸入衣物顏色')
       return
     }
 
-    setLoading(true)
-    setError('')
+    if (!formData.season) {
+      alert('請選擇適合季節')
+      return
+    }
+
+    // 驗證分類值是否符合資料庫約束
+    const validCategories = ['top', 'bottom', 'dress', 'outerwear', 'shoes', 'accessories']
+    if (!validCategories.includes(formData.category)) {
+      alert('無效的衣物分類')
+      return
+    }
+
+    // 驗證季節值是否符合資料庫約束
+    const validSeasons = ['spring', 'summer', 'autumn', 'winter', 'all']
+    if (!validSeasons.includes(formData.season)) {
+      alert('無效的季節選擇')
+      return
+    }
 
     try {
-      // 上傳圖片
-      const imageUrl = await uploadImage(imageFile, user.id)
+      setLoading(true)
 
-      // 新增衣物到資料庫
-      await addClothingItem({
-        user_id: user.id,
-        name,
-        category,
-        color,
-        season,
-        image_url: imageUrl,
-        description: description || undefined,
-        tags: tags.length > 0 ? tags : undefined
+      console.log('準備新增衣物:', {
+        ...formData,
+        user_id: user.id
       })
 
+      // 上傳圖片並取得 URL
+      const imageUrl = await uploadImage(selectedFile)
+      console.log('圖片上傳成功，URL:', imageUrl)
+
+      // 新增衣物到資料庫
+      const { error: insertError } = await supabase
+        .from('clothing_items')
+        .insert({
+          ...formData,
+          image_url: imageUrl,
+          user_id: user.id
+        })
+
+      if (insertError) {
+        console.error('新增衣物錯誤:', insertError)
+        throw new Error(`新增衣物失敗: ${insertError.message}`)
+      }
+
+      console.log('衣物新增成功')
+      // 成功後導向衣櫥頁面
       router.push('/closet')
-    } catch (error: any) {
-      setError(error.message)
+      router.refresh()
+    } catch (error) {
+      console.error('新增衣物失敗:', error)
+      alert(error instanceof Error ? error.message : '新增衣物失敗，請稍後再試')
     } finally {
       setLoading(false)
     }
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* 頁面標題 */}
-        <div className="mb-8">
-          <Link href="/closet" className="inline-flex items-center text-blue-600 hover:text-blue-500 mb-4">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            返回衣櫥
-          </Link>
-          <h1 className="text-3xl font-bold text-gray-900">新增衣物</h1>
-          <p className="text-gray-600 mt-2">為您的數位衣櫥添加新衣物</p>
-        </div>
+  // 如果正在檢查用戶狀態，顯示載入中
+  if (!user) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    )
+  }
 
-        <div className="bg-white rounded-lg shadow p-6">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* 錯誤訊息 */}
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-                {error}
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold mb-8">新增衣物</h1>
+      <form onSubmit={handleSubmit} className="max-w-2xl">
+        <div className="mb-6">
+          <label className="block mb-2">衣物圖片 *</label>
+          <div className="flex items-center space-x-4">
+            {previewUrl && (
+              <div className="relative w-32 h-32">
+                <Image
+                  src={previewUrl}
+                  alt="Preview"
+                  fill
+                  className="object-cover rounded-lg"
+                />
               </div>
             )}
-
-            {/* 圖片上傳 */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                衣物圖片 *
-              </label>
-              <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
-                {imagePreview ? (
-                  <div className="space-y-4">
-                    <div className="relative">
-                      <img
-                        src={imagePreview}
-                        alt="Preview"
-                        className="mx-auto h-64 w-auto rounded-lg object-cover"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setImageFile(null)
-                          setImagePreview('')
-                        }}
-                        className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                    <p className="text-sm text-gray-600">圖片已選擇</p>
-                  </div>
-                ) : (
-                  <div className="space-y-1 text-center">
-                    <Upload className="mx-auto h-12 w-12 text-gray-400" />
-                    <div className="flex text-sm text-gray-600">
-                      <label
-                        htmlFor="image-upload"
-                        className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500"
-                      >
-                        <span>上傳圖片</span>
-                        <input
-                          id="image-upload"
-                          name="image-upload"
-                          type="file"
-                          accept="image/*"
-                          className="sr-only"
-                          onChange={handleImageChange}
-                          required
-                        />
-                      </label>
-                      <p className="pl-1">或拖拽到這裡</p>
-                    </div>
-                    <p className="text-xs text-gray-500">PNG, JPG, WebP, GIF 最大 10MB</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* 衣物名稱 */}
-            <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                衣物名稱 * ({name.length}/{INPUT_LIMITS.NAME_MAX_LENGTH})
-              </label>
-              <input
-                type="text"
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                maxLength={INPUT_LIMITS.NAME_MAX_LENGTH}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                placeholder="例如：白色 T 恤"
-              />
-            </div>
-
-            {/* 分類 */}
-            <div>
-              <label htmlFor="category" className="block text-sm font-medium text-gray-700">
-                分類 *
-              </label>
-              <select
-                id="category"
-                value={category}
-                onChange={(e) => setCategory(e.target.value as ClothingItem['category'])}
-                required
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="top">上衣</option>
-                <option value="bottom">褲子</option>
-                <option value="dress">洋裝</option>
-                <option value="outerwear">外套</option>
-                <option value="shoes">鞋子</option>
-                <option value="accessories">配件</option>
-              </select>
-            </div>
-
-            {/* 顏色 */}
-            <div>
-              <label htmlFor="color" className="block text-sm font-medium text-gray-700">
-                顏色 * ({color.length}/{INPUT_LIMITS.COLOR_MAX_LENGTH})
-              </label>
-              <input
-                type="text"
-                id="color"
-                value={color}
-                onChange={(e) => setColor(e.target.value)}
-                required
-                maxLength={INPUT_LIMITS.COLOR_MAX_LENGTH}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                placeholder="例如：白色、黑色、藍色"
-              />
-            </div>
-
-            {/* 季節 */}
-            <div>
-              <label htmlFor="season" className="block text-sm font-medium text-gray-700">
-                適合季節 *
-              </label>
-              <select
-                id="season"
-                value={season}
-                onChange={(e) => setSeason(e.target.value as ClothingItem['season'])}
-                required
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="spring">春季</option>
-                <option value="summer">夏季</option>
-                <option value="autumn">秋季</option>
-                <option value="winter">冬季</option>
-                <option value="all">全年</option>
-              </select>
-            </div>
-
-            {/* 描述 */}
-            <div>
-              <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-                描述 ({description.length}/{INPUT_LIMITS.DESCRIPTION_MAX_LENGTH})
-              </label>
-              <textarea
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                maxLength={INPUT_LIMITS.DESCRIPTION_MAX_LENGTH}
-                rows={3}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                placeholder="衣物的詳細描述..."
-              />
-            </div>
-
-            {/* 標籤 */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                標籤 ({tags.length}/{INPUT_LIMITS.MAX_TAGS_COUNT})
-              </label>
-              <div className="flex gap-2 mb-2">
-                <input
-                  type="text"
-                  value={newTag}
-                  onChange={(e) => setNewTag(e.target.value)}
-                  maxLength={INPUT_LIMITS.TAG_MAX_LENGTH}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="新增標籤..."
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault()
-                      handleAddTag()
-                    }
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={handleAddTag}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                >
-                  <Plus className="w-4 h-4" />
-                </button>
-              </div>
-              {tags.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {tags.map((tag, index) => (
-                    <span
-                      key={index}
-                      className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800"
-                    >
-                      <Tag className="w-3 h-3 mr-1" />
-                      {tag}
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveTag(tag)}
-                        className="ml-2 text-blue-600 hover:text-blue-800"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* 提交按鈕 */}
-            <div className="flex justify-end space-x-4">
-              <Link
-                href="/closet"
-                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
-              >
-                取消
-              </Link>
-              <button
-                type="submit"
-                disabled={loading}
-                className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-              >
-                {loading ? '新增中...' : '新增衣物'}
-              </button>
-            </div>
-          </form>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleImageSelect}
+              className="block w-full text-sm text-gray-500
+                file:mr-4 file:py-2 file:px-4
+                file:rounded-full file:border-0
+                file:text-sm file:font-semibold
+                file:bg-blue-50 file:text-blue-700
+                hover:file:bg-blue-100"
+              required
+            />
+          </div>
         </div>
-      </div>
+
+        {/* 衣物名稱 */}
+        <div>
+          <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+            衣物名稱 * ({formData.name.length}/{INPUT_LIMITS.NAME_MAX_LENGTH})
+          </label>
+          <input
+            type="text"
+            id="name"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            required
+            maxLength={INPUT_LIMITS.NAME_MAX_LENGTH}
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            placeholder="例如：白色 T 恤"
+          />
+        </div>
+
+        {/* 分類 */}
+        <div>
+          <label htmlFor="category" className="block text-sm font-medium text-gray-700">
+            分類 *
+          </label>
+          <select
+            id="category"
+            value={formData.category}
+            onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+            required
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="top">上衣</option>
+            <option value="bottom">褲子</option>
+            <option value="dress">洋裝</option>
+            <option value="outerwear">外套</option>
+            <option value="shoes">鞋子</option>
+            <option value="accessories">配件</option>
+          </select>
+        </div>
+
+        {/* 顏色 */}
+        <div>
+          <label htmlFor="color" className="block text-sm font-medium text-gray-700">
+            顏色 * ({formData.color.length}/{INPUT_LIMITS.COLOR_MAX_LENGTH})
+          </label>
+          <input
+            type="text"
+            id="color"
+            value={formData.color}
+            onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+            required
+            maxLength={INPUT_LIMITS.COLOR_MAX_LENGTH}
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            placeholder="例如：白色、黑色、藍色"
+          />
+        </div>
+
+        {/* 季節 */}
+        <div>
+          <label htmlFor="season" className="block text-sm font-medium text-gray-700">
+            適合季節 *
+          </label>
+          <select
+            id="season"
+            value={formData.season}
+            onChange={(e) => setFormData({ ...formData, season: e.target.value })}
+            required
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="spring">春季</option>
+            <option value="summer">夏季</option>
+            <option value="autumn">秋季</option>
+            <option value="winter">冬季</option>
+            <option value="all">全年</option>
+          </select>
+        </div>
+
+        {/* 描述 */}
+        <div>
+          <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+            描述 ({formData.description.length}/{INPUT_LIMITS.DESCRIPTION_MAX_LENGTH})
+          </label>
+          <textarea
+            id="description"
+            value={formData.description}
+            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            maxLength={INPUT_LIMITS.DESCRIPTION_MAX_LENGTH}
+            rows={3}
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            placeholder="衣物的詳細描述..."
+          />
+        </div>
+
+        {/* 提交按鈕 */}
+        <div className="flex justify-end space-x-4">
+          <Link
+            href="/closet"
+            className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            取消
+          </Link>
+          <button
+            type="submit"
+            disabled={loading}
+            className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+          >
+            {loading ? '新增中...' : '新增衣物'}
+          </button>
+        </div>
+      </form>
     </div>
   )
 } 

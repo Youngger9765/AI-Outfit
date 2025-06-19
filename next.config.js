@@ -39,6 +39,7 @@ const nextConfig = {
   images: {
     domains: [
       'supabase.co',
+      'lyteygbseuyggbstloqu.supabase.co',
       'maps.googleapis.com',
       'images.pexels.com',
       'lh3.googleusercontent.com'

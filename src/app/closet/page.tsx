@@ -6,6 +6,8 @@ import { getClothingItems, getOutfits, getTravelOutfits, deleteClothingItem, del
 import { ClothingItem, Outfit, TravelOutfit } from '@/lib/supabase'
 import Link from 'next/link'
 import { Plus, Heart, MapPin, Camera, Trash2, Edit } from 'lucide-react'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import Image from 'next/image'
 
 export default function ClosetPage() {
   const { user } = useAuth()
@@ -15,6 +17,7 @@ export default function ClosetPage() {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'clothing' | 'outfits' | 'travel'>('clothing')
   const [error, setError] = useState('')
+  const supabase = createClientComponentClient()
 
   useEffect(() => {
     if (user) {
@@ -247,23 +250,29 @@ export default function ClosetPage() {
                         </Link>
                       </div>
                     ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                         {clothingItems.map((item) => (
-                          <div key={item.id} className="bg-gray-50 rounded-lg overflow-hidden">
-                            <div className="aspect-w-1 aspect-h-1">
-                              <img
+                          <div
+                            key={item.id}
+                            className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
+                          >
+                            <div className="relative h-48">
+                              <Image
                                 src={item.image_url}
                                 alt={item.name}
-                                className="w-full h-48 object-cover"
+                                fill
+                                className="object-cover"
                               />
                             </div>
                             <div className="p-4">
-                              <h3 className="font-medium text-gray-900 mb-1">{item.name}</h3>
-                              <p className="text-sm text-gray-600 mb-2">{item.color}</p>
-                              <div className="flex justify-between items-center">
-                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                  {item.category}
+                              <h3 className="font-semibold text-lg mb-1">{item.name}</h3>
+                              <p className="text-gray-600">類別：{item.category}</p>
+                              <div className="flex mt-2 space-x-2">
+                                <span className="px-2 py-1 bg-gray-100 rounded-full text-sm">
+                                  {item.color}
                                 </span>
+                              </div>
+                              <div className="flex justify-between items-center mt-2">
                                 <div className="flex space-x-1">
                                   <button
                                     onClick={() => handleDeleteClothing(item.id)}
