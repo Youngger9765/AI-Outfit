@@ -5,9 +5,12 @@ import { useAuth } from '@/lib/AuthContext'
 import { getClothingItems, getOutfits, getTravelOutfits, deleteClothingItem, deleteOutfit, deleteTravelOutfit } from '@/lib/closet'
 import { ClothingItem, Outfit, TravelOutfit } from '@/lib/supabase'
 import Link from 'next/link'
-import { Plus, Heart, MapPin, Camera, Trash2, Edit } from 'lucide-react'
+import { Plus, Heart, MapPin, Camera, Trash2, Edit, User, LogOut, Home } from 'lucide-react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import Image from 'next/image'
+import { supabase } from '@/lib/supabase'
+import { useRouter } from 'next/navigation'
+import Header from '@/components/Header'
 
 export default function ClosetPage() {
   const { user } = useAuth()
@@ -17,7 +20,17 @@ export default function ClosetPage() {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'clothing' | 'outfits' | 'travel'>('clothing')
   const [error, setError] = useState('')
-  const supabase = createClientComponentClient()
+  const router = useRouter()
+
+  // 登出功能
+  const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut()
+      router.push('/auth')
+    } catch (error) {
+      console.error('登出失敗:', error)
+    }
+  }
 
   useEffect(() => {
     if (user) {
@@ -125,6 +138,7 @@ export default function ClosetPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <Header active="closet" />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* 頁面標題 */}
         <div className="mb-8">
@@ -216,213 +230,154 @@ export default function ClosetPage() {
           </div>
 
           <div className="p-6">
-            {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+            {/* 新增按鈕 */}
+            <div className="mb-6">
+              {activeTab === 'clothing' && (
+                <Link
+                  href="/closet/add-item"
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  新增衣物
+                </Link>
+              )}
+            </div>
+
+            {/* 載入中狀態 */}
+            {loading && (
+              <div className="flex justify-center items-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
               </div>
-            ) : (
-              <>
-                {/* 衣物標籤頁 */}
+            )}
+
+            {/* 衣物列表 */}
+            {!loading && activeTab === 'clothing' && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {clothingItems.map((item) => (
+                  <div key={item.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                    <div className="relative h-48">
+                      <Image
+                        src={item.image_url}
+                        alt={item.name}
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
+                    <div className="p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="text-lg font-semibold text-gray-900 truncate">{item.name}</h3>
+                        <span className="text-2xl">{getCategoryIcon(item.category)}</span>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-2">{getCategoryName(item.category)}</p>
+                      <p className="text-sm text-gray-600 mb-2">顏色：{item.color}</p>
+                      <p className="text-sm text-gray-600 mb-3">季節：{item.season}</p>
+                      <div className="flex justify-end space-x-2">
+                        <button
+                          onClick={() => handleDeleteClothing(item.id)}
+                          className="p-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* 搭配列表 */}
+            {!loading && activeTab === 'outfits' && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {outfits.map((outfit) => (
+                  <div key={outfit.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-lg font-semibold text-gray-900">{outfit.name}</h3>
+                      {outfit.is_favorite && <Heart className="text-red-500" size={20} />}
+                    </div>
+                    {outfit.description && (
+                      <p className="text-sm text-gray-600 mb-3">{outfit.description}</p>
+                    )}
+                    <div className="flex justify-end space-x-2">
+                      <button
+                        onClick={() => handleDeleteOutfit(outfit.id)}
+                        className="p-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* 旅行造型列表 */}
+            {!loading && activeTab === 'travel' && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {travelOutfits.map((outfit) => (
+                  <div key={outfit.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                    <div className="relative h-48">
+                      <Image
+                        src={outfit.destination_image}
+                        alt={outfit.destination_name}
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
+                    <div className="p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="text-lg font-semibold text-gray-900">{outfit.destination_name}</h3>
+                        {outfit.is_favorite && <Heart className="text-red-500" size={20} />}
+                      </div>
+                      <p className="text-sm text-gray-600 mb-2 flex items-center">
+                        <MapPin size={14} className="mr-1" />
+                        {outfit.destination_address}
+                      </p>
+                      <div className="flex justify-end space-x-2">
+                        <button
+                          onClick={() => handleDeleteTravelOutfit(outfit.id)}
+                          className="p-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* 空狀態 */}
+            {!loading && (
+              (activeTab === 'clothing' && clothingItems.length === 0) ||
+              (activeTab === 'outfits' && outfits.length === 0) ||
+              (activeTab === 'travel' && travelOutfits.length === 0)
+            ) && (
+              <div className="text-center py-12">
+                <div className="text-6xl mb-4">
+                  {activeTab === 'clothing' && '👕'}
+                  {activeTab === 'outfits' && '👗'}
+                  {activeTab === 'travel' && '✈️'}
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  {activeTab === 'clothing' && '還沒有衣物'}
+                  {activeTab === 'outfits' && '還沒有搭配'}
+                  {activeTab === 'travel' && '還沒有旅行造型'}
+                </h3>
+                <p className="text-gray-600 mb-4">
+                  {activeTab === 'clothing' && '開始新增您的第一件衣物吧！'}
+                  {activeTab === 'outfits' && '開始建立您的第一個搭配吧！'}
+                  {activeTab === 'travel' && '開始規劃您的第一個旅行造型吧！'}
+                </p>
                 {activeTab === 'clothing' && (
-                  <div>
-                    <div className="flex justify-between items-center mb-6">
-                      <h3 className="text-lg font-medium text-gray-900">我的衣物</h3>
-                      <Link
-                        href="/closet/add-item"
-                        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-                      >
-                        <Plus className="w-4 h-4 mr-2" />
-                        新增衣物
-                      </Link>
-                    </div>
-                    
-                    {clothingItems.length === 0 ? (
-                      <div className="text-center py-12">
-                        <div className="text-6xl mb-4">👕</div>
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">還沒有衣物</h3>
-                        <p className="text-gray-600 mb-4">開始新增您的第一件衣物吧！</p>
-                        <Link
-                          href="/closet/add-item"
-                          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-                        >
-                          <Plus className="w-4 h-4 mr-2" />
-                          新增衣物
-                        </Link>
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                        {clothingItems.map((item) => (
-                          <div
-                            key={item.id}
-                            className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
-                          >
-                            <div className="relative h-48">
-                              <Image
-                                src={item.image_url}
-                                alt={item.name}
-                                fill
-                                className="object-cover"
-                              />
-                            </div>
-                            <div className="p-4">
-                              <h3 className="font-semibold text-lg mb-1">{item.name}</h3>
-                              <p className="text-gray-600">類別：{item.category}</p>
-                              <div className="flex mt-2 space-x-2">
-                                <span className="px-2 py-1 bg-gray-100 rounded-full text-sm">
-                                  {item.color}
-                                </span>
-                              </div>
-                              <div className="flex justify-between items-center mt-2">
-                                <div className="flex space-x-1">
-                                  <button
-                                    onClick={() => handleDeleteClothing(item.id)}
-                                    className="text-red-600 hover:text-red-800"
-                                    title="刪除"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  <Link
+                    href="/closet/add-item"
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700"
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    新增衣物
+                  </Link>
                 )}
-
-                {/* 搭配標籤頁 */}
-                {activeTab === 'outfits' && (
-                  <div>
-                    <div className="flex justify-between items-center mb-6">
-                      <h3 className="text-lg font-medium text-gray-900">我的搭配</h3>
-                      <Link
-                        href="/closet/create-outfit"
-                        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700"
-                      >
-                        <Plus className="w-4 h-4 mr-2" />
-                        建立搭配
-                      </Link>
-                    </div>
-                    
-                    {outfits.length === 0 ? (
-                      <div className="text-center py-12">
-                        <div className="text-6xl mb-4">👗</div>
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">還沒有搭配</h3>
-                        <p className="text-gray-600 mb-4">開始建立您的第一個搭配吧！</p>
-                        <Link
-                          href="/closet/create-outfit"
-                          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700"
-                        >
-                          <Plus className="w-4 h-4 mr-2" />
-                          建立搭配
-                        </Link>
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {outfits.map((outfit) => (
-                          <div key={outfit.id} className="bg-gray-50 rounded-lg p-4">
-                            <div className="flex justify-between items-start mb-2">
-                              <h3 className="font-medium text-gray-900">{outfit.name}</h3>
-                              <div className="flex space-x-1">
-                                <button
-                                  onClick={() => handleDeleteOutfit(outfit.id)}
-                                  className="text-red-600 hover:text-red-800"
-                                  title="刪除"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </div>
-                            </div>
-                            {outfit.description && (
-                              <p className="text-sm text-gray-600 mb-2">{outfit.description}</p>
-                            )}
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm text-gray-500">
-                                {outfit.clothing_items.length} 件衣物
-                              </span>
-                              {outfit.is_favorite && (
-                                <Heart className="w-4 h-4 text-red-500 fill-current" />
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* 旅行造型標籤頁 */}
-                {activeTab === 'travel' && (
-                  <div>
-                    <div className="flex justify-between items-center mb-6">
-                      <h3 className="text-lg font-medium text-gray-900">旅行造型</h3>
-                      <Link
-                        href="/"
-                        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700"
-                      >
-                        <Camera className="w-4 h-4 mr-2" />
-                        生成旅行造型
-                      </Link>
-                    </div>
-                    
-                    {travelOutfits.length === 0 ? (
-                      <div className="text-center py-12">
-                        <div className="text-6xl mb-4">✈️</div>
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">還沒有旅行造型</h3>
-                        <p className="text-gray-600 mb-4">開始生成您的第一個旅行造型吧！</p>
-                        <Link
-                          href="/"
-                          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700"
-                        >
-                          <Camera className="w-4 h-4 mr-2" />
-                          生成旅行造型
-                        </Link>
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {travelOutfits.map((outfit) => (
-                          <div key={outfit.id} className="bg-gray-50 rounded-lg overflow-hidden">
-                            <div className="aspect-w-16 aspect-h-9">
-                              <img
-                                src={outfit.generated_outfit_image}
-                                alt={outfit.destination_name}
-                                className="w-full h-48 object-cover"
-                              />
-                            </div>
-                            <div className="p-4">
-                              <div className="flex justify-between items-start mb-2">
-                                <h3 className="font-medium text-gray-900">{outfit.destination_name}</h3>
-                                <div className="flex space-x-1">
-                                  <button
-                                    onClick={() => handleDeleteTravelOutfit(outfit.id)}
-                                    className="text-red-600 hover:text-red-800"
-                                    title="刪除"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </button>
-                                </div>
-                              </div>
-                              <div className="flex items-center text-sm text-gray-600 mb-2">
-                                <MapPin className="w-4 h-4 mr-1" />
-                                {outfit.destination_address}
-                              </div>
-                              <div className="flex items-center justify-between">
-                                <span className="text-sm text-gray-500">
-                                  {new Date(outfit.created_at).toLocaleDateString()}
-                                </span>
-                                {outfit.is_favorite && (
-                                  <Heart className="w-4 h-4 text-red-500 fill-current" />
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </>
+              </div>
             )}
           </div>
         </div>
