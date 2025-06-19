@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { GoogleMap, Marker, useLoadScript } from '@react-google-maps/api';
 import LocationPhotoSelector from './LocationPhotoSelector';
 
@@ -78,6 +78,12 @@ const GoogleMapSearch: React.FC<GoogleMapSearchProps> = ({
 }) => {
   // 修正 hooks 規則，mapRef 一律在頂層宣告
   const mapRef = useRef<google.maps.Map | null>(null);
+  
+  // 新增照片參考狀態 - 用於成本優化
+  const [pendingPhotoRefs, setPendingPhotoRefs] = useState<string[]>([]);
+  const [photosLoading, setPhotosLoading] = useState(false);
+  const [loadedPhotoCount, setLoadedPhotoCount] = useState(0); // 新增：已載入的照片數量
+  const [loadMoreLoading, setLoadMoreLoading] = useState(false); // 新增：載入更多按鈕的載入狀態
 
   // 添加 Google Maps API 載入檢查
   const { isLoaded, loadError } = useLoadScript({
@@ -97,6 +103,7 @@ const GoogleMapSearch: React.FC<GoogleMapSearchProps> = ({
     );
   }
 
+  // ✅ 成本優化：修改 handleSearchLocation 只取得基本資訊，不抓照片
   const handleSearchLocation = async () => {
     if (!googleSearchInput.trim()) return;
     setGoogleSearchLoading(true);
@@ -104,6 +111,9 @@ const GoogleMapSearch: React.FC<GoogleMapSearchProps> = ({
     setGooglePlacePhotos([]);
     setGoogleSelectedPhoto('');
     setGooglePlaceInfo(null);
+    setPendingPhotoRefs([]); // 清空照片參考
+    setLoadedPhotoCount(0); // 重置已載入照片數量
+    
     try {
       const res = await fetch(
         `https://places.googleapis.com/v1/places:searchText`,
@@ -112,7 +122,7 @@ const GoogleMapSearch: React.FC<GoogleMapSearchProps> = ({
           headers: {
             'Content-Type': 'application/json',
             'X-Goog-Api-Key': process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
-            'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.photos,places.googleMapsUri'
+            'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.googleMapsUri' // 移除 photos 以節省成本
           },
           body: JSON.stringify({
             textQuery: googleSearchInput,
@@ -129,7 +139,7 @@ const GoogleMapSearch: React.FC<GoogleMapSearchProps> = ({
       }
 
       const data: GooglePlacesResponse = await res.json();
-      console.log('Places API Response:', data); // 添加调试日志
+      console.log('Places API Response:', data);
       
       if (data.places && data.places[0] && data.places[0].location) {
         const place = data.places[0];
@@ -147,15 +157,7 @@ const GoogleMapSearch: React.FC<GoogleMapSearchProps> = ({
             url: place.googleMapsUri || ''
           });
           
-          // 取得地點照片
-          if (place.photos && place.photos.length > 0) {
-            const photoUrls = place.photos.map((photo: GooglePlacePhoto) =>
-              `https://places.googleapis.com/v1/${photo.name}/media?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&maxHeightPx=800&maxWidthPx=800`
-            );
-            setGooglePlacePhotos(photoUrls);
-          } else {
-            setGooglePlacePhotos([]);
-          }
+          // ✅ 成本優化：不在此階段取得照片，改為手動觸發
         } else {
           setGoogleSearchError('地點資訊不完整，請嘗試其他關鍵字');
         }
@@ -169,6 +171,7 @@ const GoogleMapSearch: React.FC<GoogleMapSearchProps> = ({
     setGoogleSearchLoading(false);
   };
 
+  // ✅ 成本優化：修改 handleMapClick 只存照片參考，不立即下載
   const handleMapClick = async (
     e: google.maps.MapMouseEvent & { placeId?: string; stop?: () => void }
   ) => {
@@ -180,6 +183,9 @@ const GoogleMapSearch: React.FC<GoogleMapSearchProps> = ({
       setGooglePlacePhotos([]);
       setGoogleSelectedPhoto('');
       setGooglePlaceInfo(null);
+      setPendingPhotoRefs([]); // 清空照片參考
+      setLoadedPhotoCount(0); // 重置已載入照片數量
+      
       try {
         const res = await fetch(
           `https://places.googleapis.com/v1/places/${placeId}`,
@@ -199,7 +205,7 @@ const GoogleMapSearch: React.FC<GoogleMapSearchProps> = ({
         }
 
         const data: GooglePlace = await res.json();
-        console.log('Place Details Response:', data); // 添加调试日志
+        console.log('Place Details Response:', data);
         
         if (data.location && typeof data.location.latitude === 'number' && typeof data.location.longitude === 'number') {
           setGoogleMarkerPos({ lat: data.location.latitude, lng: data.location.longitude });
@@ -212,14 +218,15 @@ const GoogleMapSearch: React.FC<GoogleMapSearchProps> = ({
             url: data.googleMapsUri || ''
           });
           
+          // ✅ 成本優化：只存照片參考，不立即下載
           if (data.photos && data.photos.length > 0) {
-            const photoUrls = data.photos.map(
-              (photo: GooglePlacePhoto) =>
-                `https://places.googleapis.com/v1/${photo.name}/media?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&maxHeightPx=800&maxWidthPx=800`
-            );
-            setGooglePlacePhotos(photoUrls);
+            const photoRefs = data.photos.map((photo: GooglePlacePhoto) => photo.name);
+            setPendingPhotoRefs(photoRefs);
+            
+            // 自動載入前三張照片
+            await loadInitialPhotos(photoRefs.slice(0, 3));
           } else {
-            setGooglePlacePhotos([]);
+            setPendingPhotoRefs([]);
           }
         } else {
           setGoogleSearchError('地點資訊不完整');
@@ -229,6 +236,119 @@ const GoogleMapSearch: React.FC<GoogleMapSearchProps> = ({
         setGoogleSearchError(error instanceof Error ? error.message : '取得地點資訊失敗，請稍後再試');
       }
     }
+  };
+
+  // ✅ 成本優化：新增手動載入照片函式
+  const fetchPhotosByPlace = async () => {
+    if (pendingPhotoRefs.length === 0) {
+      setGoogleSearchError('沒有可載入的照片');
+      return;
+    }
+
+    setPhotosLoading(true);
+    setGoogleSearchError('');
+    
+    // 使用實際照片總數，最多 12 張
+    const maxPhotos = Math.min(pendingPhotoRefs.length, 12);
+    const photoRefsToLoad = pendingPhotoRefs.slice(0, maxPhotos);
+    
+    try {
+      const photoUrls = await Promise.all(
+        photoRefsToLoad.map(async (photoRef) => {
+          const res = await fetch(
+            `https://places.googleapis.com/v1/${photoRef}/media?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&maxHeightPx=800&maxWidthPx=800`
+          );
+          
+          if (!res.ok) {
+            throw new Error(`照片載入失敗: ${photoRef}`);
+          }
+          
+          return res.url; // 直接返回 URL，因為 media API 會重定向到實際圖片
+        })
+      );
+      
+      setGooglePlacePhotos(photoUrls);
+      setLoadedPhotoCount(photoUrls.length);
+      console.log('Photos loaded successfully:', photoUrls.length);
+    } catch (error) {
+      console.error('Photo loading error:', error);
+      setGoogleSearchError(error instanceof Error ? error.message : '照片載入失敗，請稍後再試');
+    }
+    
+    setPhotosLoading(false);
+  };
+
+  // ✅ 新增：載入初始照片（前三張）
+  const loadInitialPhotos = async (photoRefs: string[]) => {
+    if (photoRefs.length === 0) return;
+    
+    // 使用實際照片總數，最多 12 張
+    const maxPhotos = Math.min(photoRefs.length, 12);
+    const initialRefs = photoRefs.slice(0, Math.min(3, maxPhotos));
+    
+    setPhotosLoading(true);
+    setGoogleSearchError('');
+    
+    try {
+      const photoUrls = await Promise.all(
+        initialRefs.map(async (photoRef) => {
+          const res = await fetch(
+            `https://places.googleapis.com/v1/${photoRef}/media?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&maxHeightPx=800&maxWidthPx=800`
+          );
+          
+          if (!res.ok) {
+            throw new Error(`照片載入失敗: ${photoRef}`);
+          }
+          
+          return res.url;
+        })
+      );
+      
+      setGooglePlacePhotos(photoUrls);
+      setLoadedPhotoCount(photoUrls.length);
+      console.log('Initial photos loaded successfully:', photoUrls.length);
+    } catch (error) {
+      console.error('Initial photo loading error:', error);
+      setGoogleSearchError(error instanceof Error ? error.message : '初始照片載入失敗，請稍後再試');
+    }
+    
+    setPhotosLoading(false);
+  };
+
+  // ✅ 新增：載入更多照片
+  const loadMorePhotos = async () => {
+    // 使用實際照片總數，最多 12 張
+    const maxPhotos = Math.min(pendingPhotoRefs.length, 12);
+    const remainingRefs = pendingPhotoRefs.slice(loadedPhotoCount, Math.min(loadedPhotoCount + 3, maxPhotos));
+    if (remainingRefs.length === 0) return;
+    
+    setLoadMoreLoading(true);
+    setGoogleSearchError('');
+    
+    try {
+      const photoUrls = await Promise.all(
+        remainingRefs.map(async (photoRef) => {
+          const res = await fetch(
+            `https://places.googleapis.com/v1/${photoRef}/media?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&maxHeightPx=800&maxWidthPx=800`
+          );
+          
+          if (!res.ok) {
+            throw new Error(`照片載入失敗: ${photoRef}`);
+          }
+          
+          return res.url;
+        })
+      );
+      
+      setGooglePlacePhotos(prev => [...prev, ...photoUrls]);
+      setLoadedPhotoCount(prev => prev + photoUrls.length);
+      console.log('More photos loaded successfully:', photoUrls.length);
+    } catch (error) {
+      console.error('Load more photos error:', error);
+      setGoogleSearchError(error instanceof Error ? error.message : '載入更多照片失敗，請稍後再試');
+    }
+    
+    setLoadMoreLoading(false);
   };
 
   return (
@@ -274,6 +394,7 @@ const GoogleMapSearch: React.FC<GoogleMapSearchProps> = ({
         <Marker position={googleMarkerPos} />
       </GoogleMap>
       <div className="mt-4 text-gray-600 text-sm">目前座標：{googleMarkerPos.lat.toFixed(5)}, {googleMarkerPos.lng.toFixed(5)}</div>
+      
       {/* 地點資訊卡片 */}
       {googlePlaceInfo && (
         <div className="w-full max-w-2xl bg-gray-50 rounded-lg shadow p-4 mb-4">
@@ -282,38 +403,86 @@ const GoogleMapSearch: React.FC<GoogleMapSearchProps> = ({
           {googlePlaceInfo.url && (
             <a href={googlePlaceInfo.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline text-sm">在 Google Maps 上查看</a>
           )}
+          
+          {/* ✅ 成本優化：手動載入照片按鈕 */}
+          {pendingPhotoRefs.length > 0 && googlePlacePhotos.length === 0 && (
+            <div className="mt-3 pt-3 border-t border-gray-200">
+              <button
+                onClick={fetchPhotosByPlace}
+                disabled={photosLoading}
+                className="bg-gradient-to-r from-green-500 to-teal-600 text-white px-4 py-2 rounded-lg hover:shadow-lg transition-all text-sm"
+              >
+                {photosLoading ? '載入中...' : `點我載入地點照片 (${pendingPhotoRefs.length} 張，可能會消耗 API)`}
+              </button>
+              <div className="text-xs text-gray-500 mt-1">
+                點擊按鈕才會下載照片，可節省 API 成本
+              </div>
+            </div>
+          )}
+          
+          {/* ✅ 新增：顯示已載入照片數量 */}
+          {googlePlacePhotos.length > 0 && (
+            <div className="mt-3 pt-3 border-t border-gray-200">
+              <div className="text-xs text-gray-600">
+                已載入 {loadedPhotoCount} / {Math.min(pendingPhotoRefs.length, 12)} 張照片
+                {pendingPhotoRefs.length > 12 && (
+                  <span className="text-gray-400 ml-1">(最多顯示 12 張)</span>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
+      
       {/* 地點照片選擇區塊 */}
       <div className="w-full mt-2 mx-auto">
         <div className="font-semibold mb-2">地點照片：</div>
         {googlePlacePhotos.length > 0 ? (
-          <LocationPhotoSelector
-            photos={googlePlacePhotos.map((url, idx) => ({ url, id: idx }))}
-            selectedPhoto={googleSelectedPhoto}
-            onSelect={(url) => {
-              setGoogleSelectedPhoto(url);
-              if (googlePlaceInfo) {
-                setSelectedDestination({
-                  name: googlePlaceInfo.name,
-                  address: googlePlaceInfo.address,
-                  mapUrl: googlePlaceInfo.url,
-                  image: url
-                });
-              }
-            }}
-            className="grid-cols-3"
-          />
+          <>
+            <LocationPhotoSelector
+              photos={googlePlacePhotos.map((url, idx) => ({ url, id: idx }))}
+              selectedPhoto={googleSelectedPhoto}
+              onSelect={(url) => {
+                setGoogleSelectedPhoto(url);
+                if (googlePlaceInfo) {
+                  setSelectedDestination({
+                    name: googlePlaceInfo.name,
+                    address: googlePlaceInfo.address,
+                    mapUrl: googlePlaceInfo.url,
+                    image: url
+                  });
+                }
+              }}
+              className="grid-cols-3"
+            />
+            
+            {/* ✅ 新增：載入更多照片按鈕 */}
+            {loadedPhotoCount < Math.min(pendingPhotoRefs.length, 12) && (
+              <div className="mt-4 flex justify-center">
+                <button
+                  onClick={loadMorePhotos}
+                  disabled={loadMoreLoading}
+                  className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-6 py-2 rounded-lg hover:shadow-lg transition-all text-sm"
+                >
+                  {loadMoreLoading ? '載入中...' : `載入更多照片 (${Math.min(3, Math.min(pendingPhotoRefs.length, 12) - loadedPhotoCount)} 張)`}
+                </button>
+              </div>
+            )}
+          </>
+        ) : pendingPhotoRefs.length > 0 ? (
+          <div className="text-gray-500">點擊上方按鈕載入照片</div>
         ) : (
           <div className="text-gray-400">查無地點照片</div>
         )}
       </div>
+      
       {/* Modal 放大圖 */}
       {googleModalPhoto && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setGoogleModalPhoto(null)}>
           <img src={googleModalPhoto} alt="放大地點照片" className="max-w-3xl max-h-[80vh] rounded-lg shadow-2xl border-4 border-white" />
         </div>
       )}
+      
       {/* 代表照大圖 */}
       {googleSelectedPhoto && (
         <div className="mt-6 flex flex-col items-center">
