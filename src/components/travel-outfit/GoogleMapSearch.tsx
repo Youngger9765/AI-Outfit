@@ -439,22 +439,22 @@ const GoogleMapSearch: React.FC<GoogleMapSearchProps> = ({
         <div className="font-semibold mb-2">地點照片：</div>
         {googlePlacePhotos.length > 0 ? (
           <>
-            <LocationPhotoSelector
-              photos={googlePlacePhotos.map((url, idx) => ({ url, id: idx }))}
-              selectedPhoto={googleSelectedPhoto}
-              onSelect={(url) => {
-                setGoogleSelectedPhoto(url);
-                if (googlePlaceInfo) {
-                  setSelectedDestination({
-                    name: googlePlaceInfo.name,
-                    address: googlePlaceInfo.address,
-                    mapUrl: googlePlaceInfo.url,
-                    image: url
-                  });
-                }
-              }}
-              className="grid-cols-3"
-            />
+          <LocationPhotoSelector
+            photos={googlePlacePhotos.map((url, idx) => ({ url, id: idx }))}
+            selectedPhoto={googleSelectedPhoto}
+            onSelect={(url) => {
+              setGoogleSelectedPhoto(url);
+              if (googlePlaceInfo) {
+                setSelectedDestination({
+                  name: googlePlaceInfo.name,
+                  address: googlePlaceInfo.address,
+                  mapUrl: googlePlaceInfo.url,
+                  image: url
+                });
+              }
+            }}
+            className="grid-cols-3"
+          />
             
             {/* ✅ 新增：載入更多照片按鈕 */}
             {loadedPhotoCount < Math.min(pendingPhotoRefs.length, 12) && (
