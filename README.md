@@ -1,5 +1,42 @@
 # 旅行穿搭助手 - 產品需求文件 (PRD)
 
+## 🚀 Supabase 新人快速設定
+
+1. **安裝 Supabase CLI**  
+   ```bash
+   npm install -g supabase
+   ```
+
+2. **複製環境變數**  
+   ```bash
+   cp env.example .env.local
+   ```
+   並填入你的 Supabase 專案 URL 與 anon key。
+
+3. **啟動本地 Supabase（可選）**  
+   如果你要本地測試資料庫，請先啟動本地 supabase：
+   ```bash
+   supabase start
+   ```
+
+4. **執行 migration（可選）**  
+   若要本地有正確資料表結構，請執行：
+   ```bash
+   supabase db reset
+   ```
+   > ⚠️ 這會清空本地資料，僅適合開發用！
+
+5. **啟動前端專案**  
+   ```bash
+   npm install
+   npm run dev
+   ```
+
+6. **更多 supabase 設定細節**  
+   請參考 [`SUPABASE_SETUP.md`](./SUPABASE_SETUP.md)
+
+---
+
 ## 1. 產品概述
 
 ### 1.1 產品願景
