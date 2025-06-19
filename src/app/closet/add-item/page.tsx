@@ -6,8 +6,7 @@ import { useAuth } from '@/lib/AuthContext'
 import Image from 'next/image'
 import imageCompression from 'browser-image-compression'
 import Link from 'next/link'
-import { ArrowLeft, Upload, X, Plus, Tag } from 'lucide-react'
-import { validateImageFile, validateInputLength, validateTags, INPUT_LIMITS } from '@/lib/security'
+import { INPUT_LIMITS } from '@/lib/security'
 import { supabase } from '@/lib/supabase'
 
 export default function AddItemPage() {

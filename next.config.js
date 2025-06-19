@@ -52,8 +52,7 @@ const nextConfig = {
 
   // 實驗性功能
   experimental: {
-    // 啟用 App Router
-    appDir: true
+    // 實驗性功能設定
   },
 
   // 環境變數

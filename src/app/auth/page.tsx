@@ -40,9 +40,9 @@ export default function AuthPage() {
       
       console.log('認證完成，重定向到首頁');
       router.push('/')
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('認證錯誤:', error);
-      setError(error.message)
+      setError(error instanceof Error ? error.message : '認證失敗')
     } finally {
       setLoading(false)
     }

@@ -70,7 +70,7 @@ export const validateTags = (tags: string[]): { valid: boolean; error?: string }
     }
     
     // 檢查標籤是否包含危險字元
-    if (/[<>\"'&]/.test(tag)) {
+    if (/[<>"'&]/.test(tag)) {
       return {
         valid: false,
         error: '標籤包含不安全的字元'
@@ -87,18 +87,21 @@ export const checkUserOwnership = (userId: string, resourceUserId: string): bool
 }
 
 // 安全的錯誤訊息
-export const getSafeErrorMessage = (error: any): string => {
+export const getSafeErrorMessage = (error: unknown): string => {
   // 不要暴露內部錯誤訊息給用戶
-  if (error?.message?.includes('duplicate key')) {
-    return '資料已存在，請檢查輸入內容'
-  }
-  
-  if (error?.message?.includes('foreign key')) {
-    return '相關資料不存在'
-  }
-  
-  if (error?.message?.includes('permission denied')) {
-    return '權限不足'
+  if (error && typeof error === 'object' && 'message' in error) {
+    const message = String(error.message)
+    if (message.includes('duplicate key')) {
+      return '資料已存在，請檢查輸入內容'
+    }
+    
+    if (message.includes('foreign key')) {
+      return '相關資料不存在'
+    }
+    
+    if (message.includes('permission denied')) {
+      return '權限不足'
+    }
   }
   
   return '操作失敗，請稍後再試'

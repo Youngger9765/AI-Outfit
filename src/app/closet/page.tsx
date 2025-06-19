@@ -1,15 +1,12 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/lib/AuthContext'
 import { getClothingItems, getOutfits, getTravelOutfits, deleteClothingItem, deleteOutfit, deleteTravelOutfit } from '@/lib/closet'
 import { ClothingItem, Outfit, TravelOutfit } from '@/lib/supabase'
 import Link from 'next/link'
-import { Plus, Heart, MapPin, Camera, Trash2, Edit, User, LogOut, Home } from 'lucide-react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { Plus, Heart, MapPin, Trash2 } from 'lucide-react'
 import Image from 'next/image'
-import { supabase } from '@/lib/supabase'
-import { useRouter } from 'next/navigation'
 import Header from '@/components/Header'
 
 export default function ClosetPage() {
@@ -20,25 +17,8 @@ export default function ClosetPage() {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'clothing' | 'outfits' | 'travel'>('clothing')
   const [error, setError] = useState('')
-  const router = useRouter()
 
-  // 登出功能
-  const handleSignOut = async () => {
-    try {
-      await supabase.auth.signOut()
-      router.push('/auth')
-    } catch (error) {
-      console.error('登出失敗:', error)
-    }
-  }
-
-  useEffect(() => {
-    if (user) {
-      loadData()
-    }
-  }, [user, activeTab])
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!user) return
     
     setLoading(true)
@@ -46,25 +26,34 @@ export default function ClosetPage() {
     
     try {
       switch (activeTab) {
-        case 'clothing':
+        case 'clothing': {
           const items = await getClothingItems(user.id)
           setClothingItems(items)
           break
-        case 'outfits':
+        }
+        case 'outfits': {
           const outfitData = await getOutfits(user.id)
           setOutfits(outfitData)
           break
-        case 'travel':
+        }
+        case 'travel': {
           const travelData = await getTravelOutfits(user.id)
           setTravelOutfits(travelData)
           break
+        }
       }
-    } catch (error: any) {
-      setError(error.message)
+    } catch (error: unknown) {
+      setError(error instanceof Error ? error.message : '載入資料失敗')
     } finally {
       setLoading(false)
     }
-  }
+  }, [user, activeTab])
+
+  useEffect(() => {
+    if (user) {
+      loadData()
+    }
+  }, [user, loadData])
 
   const handleDeleteClothing = async (id: string) => {
     if (!user || !confirm('確定要刪除此衣物嗎？')) return
@@ -72,8 +61,8 @@ export default function ClosetPage() {
     try {
       await deleteClothingItem(id, user.id)
       setClothingItems(clothingItems.filter(item => item.id !== id))
-    } catch (error: any) {
-      setError(error.message)
+    } catch (error: unknown) {
+      setError(error instanceof Error ? error.message : '刪除失敗')
     }
   }
 
@@ -83,8 +72,8 @@ export default function ClosetPage() {
     try {
       await deleteOutfit(id, user.id)
       setOutfits(outfits.filter(outfit => outfit.id !== id))
-    } catch (error: any) {
-      setError(error.message)
+    } catch (error: unknown) {
+      setError(error instanceof Error ? error.message : '刪除失敗')
     }
   }
 
@@ -94,8 +83,8 @@ export default function ClosetPage() {
     try {
       await deleteTravelOutfit(id, user.id)
       setTravelOutfits(travelOutfits.filter(outfit => outfit.id !== id))
-    } catch (error: any) {
-      setError(error.message)
+    } catch (error: unknown) {
+      setError(error instanceof Error ? error.message : '刪除失敗')
     }
   }
 
