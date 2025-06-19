@@ -1,5 +1,146 @@
 ---
-description:
-globs:
+description: 
+globs: 
 alwaysApply: false
 ---
+# TypeScript 和 ESLint 編碼規則
+
+## 類型安全規則
+
+### 1. 避免使用 `any` 類型
+- 永遠不要使用 `any` 類型
+- 使用 `unknown` 類型替代 `any`
+- 處理 `unknown` 類型時，先檢查類型再使用
+
+```typescript
+// ❌ 錯誤
+} catch (error: any) {
+  setError(error.message)
+}
+
+// ✅ 正確
+} catch (error: unknown) {
+  setError(error instanceof Error ? error.message : '操作失敗')
+}
+```
+
+### 2. 錯誤處理最佳實踐
+- 使用類型守衛檢查錯誤物件
+- 提供安全的預設錯誤訊息
+
+```typescript
+// ✅ 正確的錯誤處理
+export const getSafeErrorMessage = (error: unknown): string => {
+  if (error && typeof error === 'object' && 'message' in error) {
+    const message = String(error.message)
+    if (message.includes('duplicate key')) {
+      return '資料已存在，請檢查輸入內容'
+    }
+    // ... 其他錯誤處理
+  }
+  return '操作失敗，請稍後再試'
+}
+```
+
+## Import 管理規則
+
+### 3. 移除未使用的 Import
+- 定期檢查並移除未使用的 import
+- 使用 ESLint 的 `@typescript-eslint/no-unused-vars` 規則
+- 只導入實際使用的模組
+
+```typescript
+// ❌ 錯誤 - 未使用的 import
+import { ArrowLeft, Upload, X, Plus, Tag } from 'lucide-react'
+import { validateImageFile, validateInputLength, validateTags, INPUT_LIMITS } from '@/lib/security'
+
+// ✅ 正確 - 只導入使用的模組
+import { INPUT_LIMITS } from '@/lib/security'
+```
+
+### 4. 移除未使用的變數
+- 移除未使用的函數和變數
+- 如果暫時不需要，使用 `// eslint-disable-next-line` 註解
+
+## React Hooks 規則
+
+### 5. useEffect 依賴項管理
+- 使用 `useCallback` 包裝函數以避免無限重新渲染
+- 正確設定 useEffect 的依賴項陣列
+
+```typescript
+// ✅ 正確的 useEffect 使用
+const loadData = useCallback(async () => {
+  // ... 函數邏輯
+}, [user, activeTab])
+
+useEffect(() => {
+  if (user) {
+    loadData()
+  }
+}, [user, loadData])
+```
+
+### 6. 變數宣告作用域
+- 在 switch case 中使用大括號來避免變數宣告衝突
+
+```typescript
+// ✅ 正確的 switch case
+switch (activeTab) {
+  case 'clothing': {
+    const items = await getClothingItems(user.id)
+    setClothingItems(items)
+    break
+  }
+  case 'outfits': {
+    const outfitData = await getOutfits(user.id)
+    setOutfits(outfitData)
+    break
+  }
+}
+```
+
+## 正則表達式規則
+
+### 7. 避免不必要的轉義字符
+- 在正則表達式中避免不必要的轉義
+
+```typescript
+// ❌ 錯誤 - 不必要的轉義
+if (/[<>\"'&]/.test(tag))
+
+// ✅ 正確
+if (/[<>"'&]/.test(tag))
+```
+
+## Next.js 配置規則
+
+### 8. 避免使用已棄用的配置
+- 不要使用已棄用的 Next.js 配置選項
+- 定期檢查 Next.js 文檔了解最新配置
+
+```javascript
+// ❌ 錯誤 - 已棄用的配置
+experimental: {
+  appDir: true  // 在 Next.js 13+ 中已不需要
+}
+
+// ✅ 正確
+experimental: {
+  // 實驗性功能設定
+}
+```
+
+## 自動修正流程
+
+### 9. 建置前檢查
+1. 執行 `npm run build` 檢查所有錯誤
+2. 修正 TypeScript 類型錯誤
+3. 移除未使用的 import 和變數
+4. 修正 ESLint 警告
+5. 確保所有 React Hooks 正確使用
+
+### 10. 程式碼品質檢查
+- 使用 TypeScript 嚴格模式
+- 啟用所有相關的 ESLint 規則
+- 定期執行 `npm run lint` 檢查程式碼品質

@@ -1,5 +1,226 @@
 ---
-description:
-globs:
+description: 
+globs: 
 alwaysApply: false
 ---
+# React 和 Next.js 編碼規則
+
+## React 組件規則
+
+### 1. 組件命名和結構
+- 使用 PascalCase 命名組件
+- 使用 `'use client'` 指令標記客戶端組件
+- 將 import 語句按順序排列：React → Next.js → 第三方庫 → 本地模組
+
+```typescript
+'use client'
+
+import React, { useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/lib/AuthContext'
+import { supabase } from '@/lib/supabase'
+
+export default function ComponentName() {
+  // 組件邏輯
+}
+```
+
+### 2. State 管理
+- 使用有意義的 state 變數名稱
+- 將相關的 state 合併為物件
+- 使用 TypeScript 類型註解
+
+```typescript
+// ✅ 正確的 state 管理
+const [formData, setFormData] = useState({
+  name: '',
+  category: 'top',
+  color: '',
+  season: 'all',
+  description: '',
+})
+
+const [loading, setLoading] = useState(false)
+const [error, setError] = useState('')
+```
+
+### 3. 事件處理
+- 使用 TypeScript 類型註解事件處理器
+- 提供適當的錯誤處理
+
+```typescript
+// ✅ 正確的事件處理
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault()
+  
+  try {
+    // 處理邏輯
+  } catch (error: unknown) {
+    setError(error instanceof Error ? error.message : '操作失敗')
+  }
+}
+
+const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0]
+  if (!file) return
+  // 處理檔案
+}
+```
+
+## Next.js App Router 規則
+
+### 4. 檔案結構
+- 使用 App Router 的檔案結構
+- 將 API 路由放在 `src/app/api/` 目錄下
+- 使用 `route.ts` 或 `route.js` 命名 API 路由
+
+```
+src/
+├── app/
+│   ├── api/
+│   │   └── endpoint/
+│   │       └── route.ts
+│   ├── page.tsx
+│   └── layout.tsx
+└── components/
+```
+
+### 5. 路由導航
+- 使用 `useRouter` 進行程式化導航
+- 使用 `Link` 組件進行聲明式導航
+- 適當處理載入和錯誤狀態
+
+```typescript
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+
+// 程式化導航
+const router = useRouter()
+router.push('/closet')
+
+// 聲明式導航
+<Link href="/closet" className="...">
+  前往衣櫥
+</Link>
+```
+
+### 6. 圖片處理
+- 使用 Next.js `Image` 組件優化圖片
+- 設定適當的 `alt` 屬性
+- 配置圖片域名
+
+```typescript
+import Image from 'next/image'
+
+<Image
+  src={imageUrl}
+  alt="衣物圖片"
+  fill
+  className="object-cover rounded-lg"
+/>
+```
+
+## 效能優化規則
+
+### 7. 記憶化
+- 使用 `useCallback` 記憶化函數
+- 使用 `useMemo` 記憶化計算值
+- 避免在渲染中創建新物件
+
+```typescript
+// ✅ 正確的記憶化
+const loadData = useCallback(async () => {
+  // 非同步操作
+}, [user, activeTab])
+
+const expensiveValue = useMemo(() => {
+  return heavyCalculation(data)
+}, [data])
+```
+
+### 8. 條件渲染
+- 使用適當的條件渲染模式
+- 避免不必要的重新渲染
+
+```typescript
+// ✅ 正確的條件渲染
+{loading && (
+  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
+)}
+
+{!loading && data && (
+  <div className="data-content">
+    {/* 資料內容 */}
+  </div>
+)}
+```
+
+## 錯誤處理規則
+
+### 9. 錯誤邊界
+- 在適當的地方使用錯誤邊界
+- 提供用戶友好的錯誤訊息
+- 記錄錯誤以便除錯
+
+```typescript
+// ✅ 正確的錯誤處理
+try {
+  const result = await apiCall()
+  setData(result)
+} catch (error: unknown) {
+  console.error('API 調用失敗:', error)
+  setError(error instanceof Error ? error.message : '操作失敗')
+}
+```
+
+### 10. 載入狀態
+- 為所有非同步操作提供載入狀態
+- 使用適當的載入指示器
+- 避免載入時的佈局偏移
+
+```typescript
+// ✅ 正確的載入狀態
+const [loading, setLoading] = useState(false)
+
+const handleSubmit = async () => {
+  setLoading(true)
+  try {
+    await submitData()
+  } finally {
+    setLoading(false)
+  }
+}
+
+<button disabled={loading}>
+  {loading ? '處理中...' : '提交'}
+</button>
+```
+
+## 安全性規則
+
+### 11. 輸入驗證
+- 驗證所有用戶輸入
+- 使用適當的輸入限制
+- 防止 XSS 攻擊
+
+```typescript
+// ✅ 正確的輸入驗證
+const validateInput = (input: string): boolean => {
+  return input.length <= MAX_LENGTH && /^[a-zA-Z0-9\s]+$/.test(input)
+}
+```
+
+### 12. 檔案上傳
+- 驗證檔案類型和大小
+- 使用安全的檔案名稱
+- 限制上傳頻率
+
+```typescript
+// ✅ 正確的檔案驗證
+const validateFile = (file: File): boolean => {
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/webp']
+  const maxSize = 10 * 1024 * 1024 // 10MB
+  
+  return allowedTypes.includes(file.type) && file.size <= maxSize
+}
+```

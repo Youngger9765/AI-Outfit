@@ -1,5 +1,210 @@
 ---
-description:
-globs:
+description: 
+globs: 
 alwaysApply: false
 ---
+# 專案架構和組織規則
+
+## 目錄結構規則
+
+### 1. 標準目錄結構
+```
+AI-Outfit/
+├── src/
+│   ├── app/                    # Next.js App Router
+│   │   ├── api/               # API 路由
+│   │   ├── auth/              # 認證頁面
+│   │   ├── closet/            # 衣櫥功能
+│   │   ├── landing/           # 首頁
+│   │   ├── globals.css        # 全域樣式
+│   │   ├── layout.tsx         # 根佈局
+│   │   └── page.tsx           # 首頁
+│   ├── components/            # 可重用組件
+│   │   ├── Header.tsx         # 頁首組件
+│   │   └── travel-outfit/     # 旅行搭配相關組件
+│   └── lib/                   # 工具函數和配置
+│       ├── auth.ts            # 認證相關
+│       ├── AuthContext.tsx    # 認證上下文
+│       ├── closet.ts          # 衣櫥相關 API
+│       ├── security.ts        # 安全相關工具
+│       └── supabase.ts        # Supabase 配置
+├── public/                    # 靜態資源
+├── supabase/                  # Supabase 配置
+└── .cursor/                   # Cursor 編輯器配置
+    └── rules/                 # 編碼規則
+```
+
+### 2. 檔案命名規則
+- 組件檔案使用 PascalCase：`Header.tsx`, `ClothesUpload.tsx`
+- 工具函數檔案使用 camelCase：`auth.ts`, `closet.ts`
+- 頁面檔案使用 kebab-case：`add-item/page.tsx`
+- 常數檔案使用 UPPER_SNAKE_CASE：`INPUT_LIMITS`
+
+## 組件組織規則
+
+### 3. 組件分類
+- **頁面組件**：放在 `src/app/` 目錄下
+- **可重用組件**：放在 `src/components/` 目錄下
+- **功能特定組件**：按功能分組，如 `travel-outfit/`
+
+### 4. 組件結構
+```typescript
+'use client'
+
+// 1. React 和 Next.js imports
+import React, { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+
+// 2. 第三方庫 imports
+import { Plus, Heart } from 'lucide-react'
+
+// 3. 本地模組 imports
+import { useAuth } from '@/lib/AuthContext'
+import { supabase } from '@/lib/supabase'
+
+// 4. 類型定義
+interface ComponentProps {
+  // 屬性定義
+}
+
+// 5. 組件定義
+export default function ComponentName({ ...props }: ComponentProps) {
+  // 6. Hooks
+  const [state, setState] = useState()
+  
+  // 7. 事件處理器
+  const handleEvent = () => {
+    // 處理邏輯
+  }
+  
+  // 8. 渲染
+  return (
+    <div>
+      {/* JSX */}
+    </div>
+  )
+}
+```
+
+## API 組織規則
+
+### 5. API 路由結構
+- 將 API 路由放在 `src/app/api/` 目錄下
+- 每個端點使用獨立的目錄和 `route.ts` 檔案
+- 使用適當的 HTTP 方法
+
+```
+src/app/api/
+├── generate-image/
+│   └── route.js
+├── search_location_photos/
+│   └── route.js
+├── share-image/
+│   └── route.ts
+└── subscribe/
+    └── route.ts
+```
+
+### 6. 資料庫操作
+- 將資料庫相關操作集中在 `src/lib/` 目錄下
+- 按功能分組：`closet.ts`, `auth.ts`
+- 使用 TypeScript 類型定義
+
+```typescript
+// src/lib/closet.ts
+export const getClothingItems = async (userId: string): Promise<ClothingItem[]> => {
+  // 資料庫操作
+}
+
+export const deleteClothingItem = async (id: string, userId: string): Promise<void> => {
+  // 刪除操作
+}
+```
+
+## 樣式組織規則
+
+### 7. CSS 和 Tailwind
+- 使用 Tailwind CSS 作為主要樣式框架
+- 全域樣式放在 `src/app/globals.css`
+- 組件特定樣式使用 CSS Modules 或內聯樣式
+
+### 8. 響應式設計
+- 使用 Tailwind 的響應式前綴
+- 遵循移動優先的設計原則
+- 測試不同螢幕尺寸
+
+```typescript
+// ✅ 正確的響應式設計
+<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+  {/* 內容 */}
+</div>
+```
+
+## 配置檔案規則
+
+### 9. 環境變數
+- 使用 `.env.local` 存放本地環境變數
+- 提供 `.env.example` 作為範本
+- 不要將敏感資訊提交到版本控制
+
+### 10. Next.js 配置
+- 在 `next.config.js` 中配置圖片域名
+- 設定適當的安全標頭
+- 配置重定向和重寫規則
+
+```javascript
+// next.config.js
+const nextConfig = {
+  images: {
+    domains: ['supabase.co', 'images.pexels.com']
+  },
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY'
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+## 版本控制規則
+
+### 11. Git 忽略檔案
+- 正確配置 `.gitignore`
+- 忽略 `node_modules/`, `.env.local`, `.next/`
+- 包含必要的配置檔案
+
+### 12. 提交訊息
+- 使用清晰的提交訊息
+- 遵循 Conventional Commits 規範
+- 分離功能開發和錯誤修正
+
+```
+feat: 新增衣物上傳功能
+fix: 修正 TypeScript 類型錯誤
+docs: 更新 README 文件
+```
+
+## 開發工作流程
+
+### 13. 開發環境
+- 使用 `npm run dev` 啟動開發伺服器
+- 使用 `npm run build` 檢查建置錯誤
+- 使用 `npm run lint` 檢查程式碼品質
+
+### 14. 測試策略
+- 為關鍵功能編寫測試
+- 使用 TypeScript 進行靜態類型檢查
+- 定期執行建置檢查
+
+### 15. 部署準備
+- 確保所有環境變數正確設定
+- 測試生產環境建置
+- 檢查效能和安全性設定
