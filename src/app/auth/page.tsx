@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { signIn, signUp } from '@/lib/auth'
 import { useAuth } from '@/lib/AuthContext'
@@ -15,10 +15,15 @@ export default function AuthPage() {
   const router = useRouter()
   const { user } = useAuth()
 
-  // 如果已登入，重定向到首頁
+  useEffect(() => {
+    if (user) {
+      console.log('用戶已登入，重定向到首頁:', user.email);
+      router.push('/')
+    }
+  }, [user, router])
+
+  // 如果已登入，顯示載入中或直接回傳 null，直到 useEffect 執行重定向
   if (user) {
-    console.log('用戶已登入，重定向到首頁:', user.email);
-    router.push('/')
     return null
   }
 

@@ -58,27 +58,6 @@ const nextConfig = {
   // 環境變數
   env: {
     CUSTOM_KEY: process.env.CUSTOM_KEY
-  },
-
-  // 重定向設定
-  async redirects() {
-    return [
-      {
-        source: '/api/:path*',
-        destination: '/api/:path*',
-        permanent: false
-      }
-    ]
-  },
-
-  // 重寫設定
-  async rewrites() {
-    return [
-      {
-        source: '/api/:path*',
-        destination: '/api/:path*'
-      }
-    ]
   }
 }
 

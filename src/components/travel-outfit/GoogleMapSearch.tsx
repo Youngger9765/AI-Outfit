@@ -27,6 +27,7 @@ interface GooglePlace {
 
 interface GooglePlacesResponse {
   places?: GooglePlace[];
+  error?: string;
 }
 
 interface GoogleMapSearchProps {
@@ -111,35 +112,25 @@ const GoogleMapSearch: React.FC<GoogleMapSearchProps> = ({
     setGooglePlacePhotos([]);
     setGoogleSelectedPhoto('');
     setGooglePlaceInfo(null);
-    setPendingPhotoRefs([]); // 清空照片參考
-    setLoadedPhotoCount(0); // 重置已載入照片數量
+    setPendingPhotoRefs([]);
+    setLoadedPhotoCount(0);
     
     try {
-      const res = await fetch(
-        `https://places.googleapis.com/v1/places:searchText`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Goog-Api-Key': process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
-            'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.googleMapsUri' // 移除 photos 以節省成本
-          },
-          body: JSON.stringify({
-            textQuery: googleSearchInput,
-            languageCode: 'zh-TW',
-            maxResultCount: 1
-          })
-        }
-      );
+      const res = await fetch('/api/google-places', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ textQuery: googleSearchInput }),
+      });
       
+      const data: GooglePlacesResponse = await res.json();
+
       if (!res.ok) {
-        const errorData = await res.json().catch(() => null);
-        console.error('Google Places API Error:', errorData);
-        throw new Error(errorData?.error?.message || '搜尋失敗');
+        throw new Error(data.error || '搜尋失敗');
       }
 
-      const data: GooglePlacesResponse = await res.json();
-      console.log('Places API Response:', data);
+      console.log('Places API Response from server:', data);
       
       if (data.places && data.places[0] && data.places[0].location) {
         const place = data.places[0];
@@ -183,28 +174,25 @@ const GoogleMapSearch: React.FC<GoogleMapSearchProps> = ({
       setGooglePlacePhotos([]);
       setGoogleSelectedPhoto('');
       setGooglePlaceInfo(null);
-      setPendingPhotoRefs([]); // 清空照片參考
-      setLoadedPhotoCount(0); // 重置已載入照片數量
+      setPendingPhotoRefs([]);
+      setLoadedPhotoCount(0);
       
       try {
-        const res = await fetch(
-          `https://places.googleapis.com/v1/places/${placeId}`,
-          {
-            method: 'GET',
-            headers: {
-              'X-Goog-Api-Key': process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
-              'X-Goog-FieldMask': 'displayName,formattedAddress,location,photos,googleMapsUri'
-            }
-          }
-        );
+        const res = await fetch('/api/google-place-details', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ placeId }),
+        });
 
         if (!res.ok) {
-          const errorData = await res.json().catch(() => null);
-          console.error('Google Places API Error:', errorData);
-          throw new Error(errorData?.error?.message || '取得地點資訊失敗');
+          const errorData = await res.json().catch(() => ({ error: '獲取地點詳細資訊失敗，且無法解析錯誤回應' }));
+          console.error('Failed to fetch place details from backend:', res.status, errorData);
+          throw new Error(errorData.error || `伺服器錯誤: ${res.status}`);
         }
 
-        const data: GooglePlace = await res.json();
+        const data: GooglePlace & { error?: string } = await res.json();
         console.log('Place Details Response:', data);
         
         if (data.location && typeof data.location.latitude === 'number' && typeof data.location.longitude === 'number') {
@@ -255,21 +243,27 @@ const GoogleMapSearch: React.FC<GoogleMapSearchProps> = ({
     try {
       const photoUrls = await Promise.all(
         photoRefsToLoad.map(async (photoRef) => {
-          const res = await fetch(
-            `https://places.googleapis.com/v1/${photoRef}/media?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&maxHeightPx=800&maxWidthPx=800`
-          );
+          const res = await fetch('/api/google-place-photo', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ photoRef }),
+          });
           
           if (!res.ok) {
-            throw new Error(`照片載入失敗: ${photoRef}`);
+            console.error(`Failed to fetch photo for ref: ${photoRef}`);
+            return null;
           }
-          
-          return res.url; // 直接返回 URL，因為 media API 會重定向到實際圖片
+          const imageBlob = await res.blob();
+          return URL.createObjectURL(imageBlob);
         })
       );
       
-      setGooglePlacePhotos(photoUrls);
-      setLoadedPhotoCount(photoUrls.length);
-      console.log('Photos loaded successfully:', photoUrls.length);
+      const validPhotos = photoUrls.filter((url): url is string => url !== null);
+      setGooglePlacePhotos(prev => [...prev, ...validPhotos]);
+      setLoadedPhotoCount(validPhotos.length);
+      console.log('Photos loaded successfully:', validPhotos.length);
     } catch (error) {
       console.error('Photo loading error:', error);
       setGoogleSearchError(error instanceof Error ? error.message : '照片載入失敗，請稍後再試');
@@ -280,33 +274,39 @@ const GoogleMapSearch: React.FC<GoogleMapSearchProps> = ({
 
   // ✅ 新增：載入初始照片（前三張）
   const loadInitialPhotos = async (photoRefs: string[]) => {
-    if (photoRefs.length === 0) return;
-    
-    // 使用實際照片總數，最多 12 張
-    const maxPhotos = Math.min(photoRefs.length, 12);
-    const initialRefs = photoRefs.slice(0, Math.min(3, maxPhotos));
-    
     setPhotosLoading(true);
-    setGoogleSearchError('');
+    setGooglePlacePhotos([]);
+    setLoadedPhotoCount(0);
     
     try {
       const photoUrls = await Promise.all(
-        initialRefs.map(async (photoRef) => {
-          const res = await fetch(
-            `https://places.googleapis.com/v1/${photoRef}/media?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&maxHeightPx=800&maxWidthPx=800`
-          );
+        photoRefs.map(async (photoRef) => {
+          const res = await fetch('/api/google-place-photo', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ photoRef }),
+          });
           
           if (!res.ok) {
-            throw new Error(`照片載入失敗: ${photoRef}`);
+            console.error(`Failed to fetch initial photo for ref: ${photoRef}`);
+            return null;
           }
-          
-          return res.url;
+          const imageBlob = await res.blob();
+          return URL.createObjectURL(imageBlob);
         })
       );
+
+      const validPhotos = photoUrls.filter((url): url is string => url !== null);
+      setGooglePlacePhotos(validPhotos);
+      setLoadedPhotoCount(validPhotos.length);
       
-      setGooglePlacePhotos(photoUrls);
-      setLoadedPhotoCount(photoUrls.length);
-      console.log('Initial photos loaded successfully:', photoUrls.length);
+      // 如果有照片，預設選取第一張
+      if (validPhotos.length > 0) {
+        setGoogleSelectedPhoto(validPhotos[0]);
+      }
+      
     } catch (error) {
       console.error('Initial photo loading error:', error);
       setGoogleSearchError(error instanceof Error ? error.message : '初始照片載入失敗，請稍後再試');
@@ -328,21 +328,27 @@ const GoogleMapSearch: React.FC<GoogleMapSearchProps> = ({
     try {
       const photoUrls = await Promise.all(
         remainingRefs.map(async (photoRef) => {
-          const res = await fetch(
-            `https://places.googleapis.com/v1/${photoRef}/media?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&maxHeightPx=800&maxWidthPx=800`
-          );
+          const res = await fetch('/api/google-place-photo', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ photoRef }),
+          });
           
           if (!res.ok) {
-            throw new Error(`照片載入失敗: ${photoRef}`);
+            console.error(`Failed to fetch photo for ref: ${photoRef}`);
+            return null;
           }
-          
-          return res.url;
+          const imageBlob = await res.blob();
+          return URL.createObjectURL(imageBlob);
         })
       );
       
-      setGooglePlacePhotos(prev => [...prev, ...photoUrls]);
-      setLoadedPhotoCount(prev => prev + photoUrls.length);
-      console.log('More photos loaded successfully:', photoUrls.length);
+      const validPhotos = photoUrls.filter((url): url is string => url !== null);
+      setGooglePlacePhotos(prev => [...prev, ...validPhotos]);
+      setLoadedPhotoCount(prev => prev + validPhotos.length);
+      console.log('More photos loaded successfully:', validPhotos.length);
     } catch (error) {
       console.error('Load more photos error:', error);
       setGoogleSearchError(error instanceof Error ? error.message : '載入更多照片失敗，請稍後再試');
