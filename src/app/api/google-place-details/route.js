@@ -29,7 +29,7 @@ export async function POST(req) {
       let errorJson;
       try {
         errorJson = JSON.parse(errorText);
-      } catch (e) {
+      } catch {
         return Response.json({ error: 'Google API returned a non-JSON error', detail: errorText }, { status: googleRes.status });
       }
       return Response.json({ error: errorJson?.error?.message || 'Failed to fetch from Google Place Details API', detail: errorJson }, { status: googleRes.status });
