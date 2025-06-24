@@ -171,9 +171,17 @@ const TravelOutfitCore = () => {
         formData.append('images', selfieImage.file, 'selfie.jpg');
       }
       if (selectedDestination?.image) {
-        const res = await fetch(selectedDestination.image);
-        const blob = await res.blob();
-        formData.append('images', blob, 'location.jpg');
+        // Check if it's a blob URL (which would violate CSP)
+        if (selectedDestination.image.startsWith('blob:')) {
+          // For blob URLs, we need to convert them differently
+          // Skip adding the location image if it's a blob URL
+          console.warn('Blob URLs are not supported due to CSP restrictions');
+        } else {
+          // For regular URLs, fetch normally
+          const res = await fetch(selectedDestination.image);
+          const blob = await res.blob();
+          formData.append('images', blob, 'location.jpg');
+        }
       }
       // 根據用戶選擇的 AI 服務商決定 endpoint
       const endpoint = aiProvider === 'openai' ? '/api/edit-image' : '/api/edit-image-gemini';
@@ -181,12 +189,18 @@ const TravelOutfitCore = () => {
         method: 'POST',
         body: formData,
       });
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || `HTTP error! status: ${res.status}`);
+      }
+      
       const data = await res.json();
       if (data.imageBase64) {
         imageUrl = `data:image/png;base64,${data.imageBase64}`;
       } else {
         imageUrl = '';
-        alert(data.error ? JSON.stringify(data.error) : 'AI 生成失敗');
+        alert(data.error ? `AI 生成失敗: ${data.error}` : 'AI 生成失敗');
       }
     } catch (e) {
       imageUrl = '';

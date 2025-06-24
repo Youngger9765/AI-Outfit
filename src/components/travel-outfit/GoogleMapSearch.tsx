@@ -2,6 +2,9 @@ import React, { useRef, useState } from 'react';
 import { GoogleMap, Marker, useLoadScript } from '@react-google-maps/api';
 import LocationPhotoSelector from './LocationPhotoSelector';
 
+// Define libraries as a static constant outside the component
+const GOOGLE_MAPS_LIBRARIES: ("places")[] = ['places'];
+
 // 添加 Google Places API 的類型定義
 interface GooglePlacePhoto {
   name: string;
@@ -89,7 +92,7 @@ const GoogleMapSearch: React.FC<GoogleMapSearchProps> = ({
   // 添加 Google Maps API 載入檢查
   const { isLoaded, loadError } = useLoadScript({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
-    libraries: ['places']
+    libraries: GOOGLE_MAPS_LIBRARIES
   });
 
   if (loadError) {

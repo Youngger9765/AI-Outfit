@@ -153,22 +153,24 @@ const Step4Result: React.FC<Step4ResultProps> = ({
       <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-4">你的專屬旅遊穿搭照片 ✨</h2>
       <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
         {/* 生成的圖片區塊 - 添加hover效果和cursor指示 */}
-        <div className="relative group cursor-pointer mb-8" onClick={() => setIsFullscreen(true)}>
-          <img
-            src={generatedContent.url}
-            alt="AI生成的穿搭照片"
-            className="w-full max-w-2xl mx-auto rounded-xl shadow-lg transition-transform duration-200 group-hover:opacity-95"
-          />
-          {/* Hover時顯示的放大icon提示 */}
-          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-            <div className="bg-black/50 p-3 rounded-full">
-              <Maximize2 className="text-white w-6 h-6" />
+        {generatedContent.url && (
+          <div className="relative group cursor-pointer mb-8" onClick={() => setIsFullscreen(true)}>
+            <img
+              src={generatedContent.url}
+              alt="AI生成的穿搭照片"
+              className="w-full max-w-2xl mx-auto rounded-xl shadow-lg transition-transform duration-200 group-hover:opacity-95"
+            />
+            {/* Hover時顯示的放大icon提示 */}
+            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+              <div className="bg-black/50 p-3 rounded-full">
+                <Maximize2 className="text-white w-6 h-6" />
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* 全螢幕Modal */}
-        {isFullscreen && (
+        {isFullscreen && generatedContent.url && (
           <div 
             className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center cursor-zoom-out"
             onClick={() => setIsFullscreen(false)}
