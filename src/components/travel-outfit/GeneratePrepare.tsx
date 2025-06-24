@@ -39,6 +39,15 @@ const Step4Prepare: React.FC<Step4PrepareProps> = ({
     setIsDev(window.location.hostname === 'localhost' && window.location.port === '3000');
   }, []);
 
+  // 添加調試日誌
+  useEffect(() => {
+    console.log('GeneratePrepare - selectedDestination:', selectedDestination);
+    if (selectedDestination) {
+      console.log('selectedDestination.image:', selectedDestination.image);
+      console.log('selectedDestination.name:', selectedDestination.name);
+    }
+  }, [selectedDestination]);
+
   return (
     <div className="max-w-md mx-auto text-center">
       <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-4">準備生成你的旅遊穿搭照片</h2>
@@ -91,10 +100,14 @@ const Step4Prepare: React.FC<Step4PrepareProps> = ({
             </div>
             <div>
               <div className="text-sm text-gray-500 mb-1">地點代表照片</div>
-              {selectedDestination?.image && (
+              {selectedDestination?.image ? (
                 <div>
-                  <Image src={selectedDestination.image} alt="地點代表照片" width={64} height={64} className="mx-auto w-16 h-16 object-cover rounded-md border mb-1" unoptimized />
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={selectedDestination.image} alt="地點代表照片" className="mx-auto w-16 h-16 object-cover rounded-md border mb-1" />
+                  <div className="text-xs text-gray-400 mt-1">{selectedDestination.name}</div>
                 </div>
+              ) : (
+                <div className="text-xs text-gray-400">無地點照片</div>
               )}
             </div>
           </div>

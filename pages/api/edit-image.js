@@ -74,7 +74,7 @@ export default async function handler(req, res) {
       image: images,
       prompt,
       size: "1024x1536",
-      quality: "high",
+      quality: "medium",
       output_format: "png"
     });
 

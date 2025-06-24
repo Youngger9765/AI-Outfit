@@ -1,9 +1,9 @@
-import React, { useRef, useState } from 'react';
-import { GoogleMap, Marker, useLoadScript } from '@react-google-maps/api';
+import React, { useRef, useState, useEffect } from 'react';
+import { GoogleMap, useLoadScript } from '@react-google-maps/api';
 import LocationPhotoSelector from './LocationPhotoSelector';
 
 // Define libraries as a static constant outside the component
-const GOOGLE_MAPS_LIBRARIES: ("places")[] = ['places'];
+const GOOGLE_MAPS_LIBRARIES: ("places" | "marker")[] = ['places', 'marker'];
 
 // 添加 Google Places API 的類型定義
 interface GooglePlacePhoto {
@@ -82,6 +82,7 @@ const GoogleMapSearch: React.FC<GoogleMapSearchProps> = ({
 }) => {
   // 修正 hooks 規則，mapRef 一律在頂層宣告
   const mapRef = useRef<google.maps.Map | null>(null);
+  const markerRef = useRef<google.maps.marker.AdvancedMarkerElement | null>(null);
   
   // 新增照片參考狀態 - 用於成本優化
   const [pendingPhotoRefs, setPendingPhotoRefs] = useState<string[]>([]);
@@ -94,6 +95,34 @@ const GoogleMapSearch: React.FC<GoogleMapSearchProps> = ({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
     libraries: GOOGLE_MAPS_LIBRARIES
   });
+
+  // 使用 useEffect 來管理 AdvancedMarkerElement
+  useEffect(() => {
+    if (!mapRef.current || !isLoaded) return;
+
+    // 清理舊的 marker
+    if (markerRef.current) {
+      markerRef.current.map = null;
+    }
+
+    // 創建新的 AdvancedMarkerElement
+    if (window.google && window.google.maps && window.google.maps.marker) {
+      const { AdvancedMarkerElement } = window.google.maps.marker;
+      
+      markerRef.current = new AdvancedMarkerElement({
+        map: mapRef.current,
+        position: googleMarkerPos,
+        gmpClickable: false
+      });
+    }
+
+    // 清理函數
+    return () => {
+      if (markerRef.current) {
+        markerRef.current.map = null;
+      }
+    };
+  }, [googleMarkerPos, isLoaded]);
 
   if (loadError) {
     return <div className="text-red-600">Google Maps 載入失敗，請稍後再試</div>;
@@ -203,19 +232,20 @@ const GoogleMapSearch: React.FC<GoogleMapSearchProps> = ({
           setGoogleMapCenter({ lat: data.location.latitude, lng: data.location.longitude });
           setGoogleMapZoom(16);
           
-          setGooglePlaceInfo({
+          const placeInfo = {
             name: data.displayName?.text || '',
             address: data.formattedAddress || '',
             url: data.googleMapsUri || ''
-          });
+          };
+          setGooglePlaceInfo(placeInfo);
           
           // ✅ 成本優化：只存照片參考，不立即下載
           if (data.photos && data.photos.length > 0) {
             const photoRefs = data.photos.map((photo: GooglePlacePhoto) => photo.name);
             setPendingPhotoRefs(photoRefs);
             
-            // 自動載入前三張照片
-            await loadInitialPhotos(photoRefs.slice(0, 3));
+            // 自動載入前三張照片，並傳遞 placeInfo
+            await loadInitialPhotos(photoRefs.slice(0, 3), placeInfo);
           } else {
             setPendingPhotoRefs([]);
           }
@@ -267,6 +297,19 @@ const GoogleMapSearch: React.FC<GoogleMapSearchProps> = ({
       setGooglePlacePhotos(prev => [...prev, ...validPhotos]);
       setLoadedPhotoCount(validPhotos.length);
       console.log('Photos loaded successfully:', validPhotos.length);
+      
+      // 如果是第一次載入且有照片，預設選取第一張並設定 selectedDestination
+      if (googlePlacePhotos.length === 0 && validPhotos.length > 0) {
+        setGoogleSelectedPhoto(validPhotos[0]);
+        if (googlePlaceInfo) {
+          setSelectedDestination({
+            name: googlePlaceInfo.name,
+            address: googlePlaceInfo.address,
+            mapUrl: googlePlaceInfo.url,
+            image: validPhotos[0]
+          });
+        }
+      }
     } catch (error) {
       console.error('Photo loading error:', error);
       setGoogleSearchError(error instanceof Error ? error.message : '照片載入失敗，請稍後再試');
@@ -276,7 +319,7 @@ const GoogleMapSearch: React.FC<GoogleMapSearchProps> = ({
   };
 
   // ✅ 新增：載入初始照片（前三張）
-  const loadInitialPhotos = async (photoRefs: string[]) => {
+  const loadInitialPhotos = async (photoRefs: string[], placeInfo?: { name: string; address: string; url: string }) => {
     setPhotosLoading(true);
     setGooglePlacePhotos([]);
     setLoadedPhotoCount(0);
@@ -305,9 +348,19 @@ const GoogleMapSearch: React.FC<GoogleMapSearchProps> = ({
       setGooglePlacePhotos(validPhotos);
       setLoadedPhotoCount(validPhotos.length);
       
-      // 如果有照片，預設選取第一張
+      // 如果有照片，預設選取第一張並設定 selectedDestination
       if (validPhotos.length > 0) {
         setGoogleSelectedPhoto(validPhotos[0]);
+        // 使用傳入的 placeInfo 或者 googlePlaceInfo
+        const currentPlaceInfo = placeInfo || googlePlaceInfo;
+        if (currentPlaceInfo) {
+          setSelectedDestination({
+            name: currentPlaceInfo.name,
+            address: currentPlaceInfo.address,
+            mapUrl: currentPlaceInfo.url,
+            image: validPhotos[0]
+          });
+        }
       }
       
     } catch (error) {
@@ -395,12 +448,13 @@ const GoogleMapSearch: React.FC<GoogleMapSearchProps> = ({
           zoomControl: true,
           mapTypeControl: false,
           streetViewControl: false,
-          fullscreenControl: true
+          fullscreenControl: true,
+          mapId: 'DEMO_MAP_ID' // 需要 mapId 才能使用 AdvancedMarkerElement
         }}
         onLoad={map => { mapRef.current = map; }}
         onClick={handleMapClick}
       >
-        <Marker position={googleMarkerPos} />
+        {/* Marker will be added using AdvancedMarkerElement in onLoad */}
       </GoogleMap>
       <div className="mt-4 text-gray-600 text-sm">目前座標：{googleMarkerPos.lat.toFixed(5)}, {googleMarkerPos.lng.toFixed(5)}</div>
       
